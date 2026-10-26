@@ -1111,19 +1111,31 @@ body.print-report .section-collapse-body[hidden] { display: block; }
   body.print-audiogram .audiogram-print-values td { padding: 7px 6px !important; }
   body.print-audiogram .audiogram-print-unit { margin: 0 !important; text-align: left; }
   /* الإجازة المرضية: صفحة واحدة دائماً. الارتفاع يُحسب لحظة الطباعة (يخصم الهوامش والتذييل) في printReport */
+@media print {
+  @page {
+    size: A4;
+    margin: 4mm; /* تقليل الهامش الخارجي لزيادة مساحة الورقة */
+  }
+
   body.print-report .print-leave-paper {
     box-sizing: border-box;
     width: 100%;
-    height: var(--print-content-h, 240mm);
-    max-height: none;
-    overflow: visible;
-    break-inside: avoid;
-    break-after: avoid;
-    padding: 6mm 8mm !important;
-    border: 0 !important;
+    /* تقليل الـ padding العلوي والسفلي لمنع نزول التذييل للأسفل جداً */
+    padding: 4mm 6mm !important; 
+    height: auto !important; /* السماح للمحتوى بأخذ حيزه الطبيعي المرن دون قص */
+    min-height: 100%;
     display: flex;
     flex-direction: column;
+    justify-content: space-between; /* توزيع العناصر بين الأعلى والأسفل بشكل متوازن */
+    overflow: visible !important;
   }
+
+  /* تأكيد عدم تجاوز قسم التوقيع والختم للحدود */
+  body.print-report .print-leave-signature {
+    margin-top: 10px !important;
+    padding-bottom: 5px !important;
+  }
+}
   body.print-report .print-leave-signature { margin-top: auto !important; padding-top: 24px; }
   body.print-report table { width: 100% !important; min-width: 0 !important; table-layout: fixed; font-size: 9px; }
   body.print-report th, body.print-report td { padding: 4px 5px !important; overflow-wrap: anywhere; }
