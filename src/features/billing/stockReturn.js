@@ -7,7 +7,8 @@ export function stockReturnsFor({ invoice, patients, supplies, hearingAids, isSa
   let lines = [];
   let aidId = null;
 
-  if (invoice.stock_lines?.length) {
+  // stock_lines موجودة (ولو فارغة بعد مرتجع كامل) = ما بقي مخصوماً من المخزون فقط؛ فلا نخمّن من البنود
+  if (Array.isArray(invoice.stock_lines)) {
     lines = invoice.stock_lines;
   } else if (isSale) {
     const byName = new Map();

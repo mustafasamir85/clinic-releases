@@ -111,6 +111,40 @@ export function useInvoices(enabled, currentUser = null) {
     );
   }, [payer]);
 
+  // مرتجع بيع مستلزمات: يُلحَق بالفاتورة (بنود سالبة + سجل المرتجع) ويُخفَّض الإجمالي.
+  // ما دُفع زيادة عن المستحق الجديد يُسترد: يخفض المدفوع ويُسجَّل كدفعة سالبة اليوم (فيظهر في الكشف النقدي).
+  // newItems = بنود المرتجع، entry = سجل المرتجع، stockLines = ما بقي مخصوماً من المخزون. تعيد المبلغ المسترد.
+  const applySaleReturn = useCallback(
+    (id, { entry, newItems, stockLines }) => {
+      const inv = invoices.find((i) => i.id === id);
+      if (!inv) return 0;
+      const items = [...(inv.items ?? []), ...newItems];
+      const total = itemsTotal(items);
+      const due = round2(total - (inv.insurance_amount ?? 0));
+      const paid = round2(Math.min(inv.paid ?? 0, Math.max(0, due)));
+      const refund = round2((inv.paid ?? 0) - paid);
+      setInvoices((prev) =>
+        prev.map((x) =>
+          x.id !== id
+            ? x
+            : {
+                ...x,
+                items,
+                service: itemsService(items),
+                total,
+                paid,
+                status: statusFor(paid, due),
+                stock_lines: stockLines,
+                returns: [...(x.returns ?? []), { ...entry, refund }],
+                ...(refund > 0 ? { payments: [...(x.payments ?? []), { date: getToday(), amount: -refund, ...(payer ? { by: payer } : {}) }] } : {}),
+              }
+        )
+      );
+      return refund;
+    },
+    [invoices, payer]
+  );
+
   // تعديل فاتورة زيارة بعد تغيير إجراءاتها: يعاد حساب حصة التأمين والحالة، ويبقى المدفوع كما هو
   const updateInvoice = useCallback((id, { service, total, items, insurance }) => {
     setInvoices((prev) =>
@@ -149,5 +183,5 @@ export function useInvoices(enabled, currentUser = null) {
     [invoices, updateInvoice]
   );
 
-  return { invoices, createInvoice, confirmPayment, recordPayment, updateInvoice, cancelInvoice, removeInvoice };
+  return { invoices, createInvoice, confirmPayment, recordPayment, applySaleReturn, updateInvoice, cancelInvoice, removeInvoice };
 }

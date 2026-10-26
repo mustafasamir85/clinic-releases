@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import './App.css';
 import { APPOINTMENT_STATUS, TABS } from './constants';
 import { getToday, formatUser } from './utils/format';
+import { newId } from './utils/id';
 import { setPrintUser } from './utils/printUser';
 import {
   INITIAL_HEARING_AIDS,
@@ -46,6 +47,7 @@ import AudioTab from './features/audio/AudioTab';
 import HearingAidManagerModal from './features/audio/HearingAidManagerModal';
 import HearingAidStockModal from './features/audio/HearingAidStockModal';
 import SalesTab, { SALE_SOURCE } from './features/sales/SalesTab';
+import { buildSaleReturn } from './features/sales/saleReturn';
 import SpeechTab from './features/speech/SpeechTab';
 import ServicesTab from './features/services/ServicesTab';
 import SuppliesTab from './features/supplies/SuppliesTab';
@@ -93,7 +95,7 @@ export default function App() {
 
   const patientsState = usePatients(enabled);
   const { selectedPatient } = patientsState;
-  const { invoices, createInvoice, recordPayment, updateInvoice, cancelInvoice, removeInvoice } = useInvoices(enabled, auth.currentUser);
+  const { invoices, createInvoice, recordPayment, applySaleReturn, updateInvoice, cancelInvoice, removeInvoice } = useInvoices(enabled, auth.currentUser);
   const [payingId, setPayingId] = useState(null); // فاتورة قيد تسجيل دفعة
   const [editingInvoiceId, setEditingInvoiceId] = useState(null); // فاتورة قيد التعديل
 
@@ -132,6 +134,21 @@ export default function App() {
       `بيع: ${customerName} (${invoice.inv_no})`
     );
     notify(`تم البيع وإصدار الفاتورة ${invoice.inv_no} بإجمالي ${invoice.total} د.أ${paidNow ? '' : ' — بانتظار تأكيد الدفع'}.`, 4500);
+  };
+
+  // مرتجع بيع مستلزمات: يُلحَق بالفاتورة (إجمالي أقل + استرداد ما دُفع زيادة) وتعود الكميات إلى المخزون
+  const handleReturnSale = ({ invoice, selections, reason }) => {
+    if (!auth.can(ACTIONS.RETURN_SALES)) return 'ليست لديك صلاحية مرتجع بيع المستلزمات.';
+    const result = buildSaleReturn({ invoice, supplies: supplies.items, selections, reason, user: auth.currentUser, id: newId(), date: getToday() });
+    if (result.error) return result.error;
+
+    const refund = applySaleReturn(invoice.id, { entry: result.entry, newItems: result.items, stockLines: result.stockLines });
+    if (result.stockBack.length > 0) {
+      // qty سالب في adjustUsage = إرجاع للمخزون (يُسجَّل في الحركة كـ «إرجاع للمخزون»)
+      inventory.adjustUsage(result.stockBack.map((s) => ({ id: s.id, name: s.name, qty: -s.qty })), `مرتجع بيع: ${invoice.patient_name} (${invoice.inv_no})`);
+    }
+    notify(`تم تسجيل المرتجع بقيمة ${result.value} د.أ على الفاتورة ${invoice.inv_no}${refund > 0 ? ` — يُرَدّ للعميل ${refund} د.أ` : ''}.`, 5000);
+    return undefined;
   };
 
   // إدخال سماعات إلى المخزون
@@ -521,6 +538,7 @@ export default function App() {
               invoices={invoices}
               canConfirmPayment={auth.can(ACTIONS.CONFIRM_PAYMENT)}
               onSell={handleSellSupplies}
+              onReturn={auth.can(ACTIONS.RETURN_SALES) ? handleReturnSale : undefined}
               onPreview={setPreviewInvoice}
             />
           )}

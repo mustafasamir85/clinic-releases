@@ -18,7 +18,7 @@ const weekday = (date) => new Date(`${date}T00:00:00`).toLocaleDateString('ar', 
 const periodText = (from, to) => (!from && !to ? 'كل الفترات' : `من ${from ? formatDateDMY(from) : 'البداية'} إلى ${to ? formatDateDMY(to) : 'اليوم'}`);
 
 // معاينة الكشف النقدي: الدخل المقبوض يومياً بتفاصيل الدفعات (data من cashStatement)
-export default function CashStatementModal({ data, from, to, onClose }) {
+export default function CashStatementModal({ data, from, to, userLabel, onClose }) {
   const exportCsv = () =>
     downloadCsv(
       `cash-statement-${getToday()}.csv`,
@@ -27,7 +27,7 @@ export default function CashStatementModal({ data, from, to, onClose }) {
     );
 
   return (
-    <Modal title="الكشف النقدي — الدخل اليومي" icon={Wallet} subtitle={periodText(from, to)} maxWidth={1600} onClose={onClose}>
+    <Modal title="الكشف النقدي — الدخل اليومي" icon={Wallet} subtitle={`${periodText(from, to)}${userLabel ? ` • المستخدم: ${userLabel}` : ''}`} maxWidth={1600} onClose={onClose}>
       <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap', marginBottom: '12px' }}>
         <button type="button" onClick={exportCsv} disabled={data.count === 0} style={outlineGoldButtonStyle}>
           <Download size={14} color={COLORS.gold} /> تصدير CSV
@@ -40,7 +40,7 @@ export default function CashStatementModal({ data, from, to, onClose }) {
       <div className="paper-sheet" style={paper}>
         <PrintHeader>
           <div>الكشف النقدي — تفاصيل الدخل اليومي</div>
-          <div style={{ color: '#444' }}>{periodText(from, to)} • تاريخ الطباعة: {formatDateDMY(getToday())}</div>
+          <div style={{ color: '#444' }}>{periodText(from, to)}{userLabel ? ` • المستخدم: ${userLabel}` : ''} • تاريخ الطباعة: {formatDateDMY(getToday())}</div>
         </PrintHeader>
 
         {data.count === 0 ? (
@@ -73,7 +73,7 @@ export default function CashStatementModal({ data, from, to, onClose }) {
                   <tr key={i}>
                     <td style={{ ...cell, ...nowrap }}>{r.invNo}</td>
                     <td style={cell}>{r.patient}</td>
-                    <td style={cell}>{r.service}</td>
+                    <td style={cell}>{r.refund ? 'مرتجع — ' : ''}{r.service}</td>
                     <td style={cell}>{r.insuranceCompany || '—'}</td>
                     <td style={{ ...cell, ...nowrap, textAlign: 'center' }}>{r.copayAmount == null ? '—' : r.copayAmount}</td>
                     <td style={cell}>{r.user || '—'}</td>
@@ -109,7 +109,7 @@ export default function CashStatementModal({ data, from, to, onClose }) {
           </p>
         )}
         <p style={{ margin: '10px 0 0', fontSize: '11px', color: '#555' }}>
-          يشمل المقبوض من المرضى فقط؛ مطالبات شركات التأمين غير داخلة فيه حتى تُحصَّل.
+          يشمل المقبوض من المرضى فقط؛ مطالبات شركات التأمين غير داخلة فيه حتى تُحصَّل. المبالغ السالبة = مردودات للعملاء بسبب مرتجع مبيعات.
         </p>
       </div>
     </Modal>

@@ -18,6 +18,8 @@ export default function InvoicePreviewModal({ invoice, onClose }) {
   const receivers = [...new Set(logged.map((p) => p.by).filter(Boolean))];
   const receipts = [...logged, ...(legacyPaid > 0 ? [{ date: invoice.date, amount: legacyPaid, by: '' }] : [])];
 
+  const returns = Array.isArray(invoice.returns) ? invoice.returns : [];
+
   const header = (
     <div style={{ position: 'relative', borderBottom: `2px solid ${COLORS.gold}`, paddingBottom: '12px', marginBottom: '16px' }}>
       <PrintHeader bare />
@@ -90,14 +92,31 @@ export default function InvoicePreviewModal({ invoice, onClose }) {
         <span>الإجمالي الكلي: <span style={{ color: COLORS.gold }}>{formatMoney(invoice.total)}</span></span>
       </div>
 
+      {returns.length > 0 && (
+        <div style={{ marginBottom: '16px', fontSize: '13px' }}>
+          <strong style={{ color: COLORS.muted }}>المرتجعات:</strong>
+          <ul style={{ listStyle: 'none', margin: '6px 0 0', padding: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {returns.map((r, i) => (
+              <li key={r.id ?? i} style={{ borderBottom: `1px dashed ${COLORS.border}`, paddingBottom: '4px' }}>
+                {formatDateDMY(r.date)} — {(r.lines ?? []).map((l) => `${l.name} ×${l.qty}`).join('، ')} ({formatMoney(r.amount)})
+                {r.reason ? ` — السبب: ${r.reason}` : ''}
+                {r.by ? ` — بواسطة: ${r.by}` : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {receipts.length > 0 && (
         <div style={{ marginBottom: '16px', fontSize: '13px' }}>
           <strong style={{ color: COLORS.muted }}>الدفعات المستلمة:</strong>
           <ul style={{ listStyle: 'none', margin: '6px 0 0', padding: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {receipts.map((p, i) => (
               <li key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', borderBottom: `1px dashed ${COLORS.border}`, paddingBottom: '4px' }}>
-                <span>{formatDateDMY(p.date)} — استلمها: <strong>{p.by || '—'}</strong></span>
-                <strong style={{ color: COLORS.successText }}>{formatMoney(p.amount)}</strong>
+                <span>
+                  {formatDateDMY(p.date)} — {p.amount < 0 ? 'ردّها (مرتجع):' : 'استلمها:'} <strong>{p.by || '—'}</strong>
+                </span>
+                <strong style={{ color: p.amount < 0 ? COLORS.danger : COLORS.successText }}>{formatMoney(p.amount)}</strong>
               </li>
             ))}
           </ul>

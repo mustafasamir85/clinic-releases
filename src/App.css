@@ -1114,8 +1114,8 @@ body.print-report .section-collapse-body[hidden] { display: block; }
   body.print-report .print-leave-paper {
     box-sizing: border-box;
     width: 100%;
-    height: var(--print-content-h, 240mm);
-    max-height: var(--print-content-h, 240mm);
+    height: calc(var(--print-content-h, 240mm) - 4mm);
+    max-height: calc(var(--print-content-h, 240mm) - 4mm);
     overflow: hidden;
     break-inside: avoid;
     break-after: avoid;
@@ -1123,6 +1123,12 @@ body.print-report .section-collapse-body[hidden] { display: block; }
     border: 0 !important;
     display: flex;
     flex-direction: column;
+  }
+  /* ضمان صفحة واحدة: الصفحة نفسها بارتفاع المحتوى المتاح وما زاد عنه يُقصّ بدل أن ينتقل لصفحة ثانية (مهما اختلفت الخطوط أو المتصفح) */
+  html:has(body.print-leave), body.print-leave {
+    height: var(--print-content-h, 240mm) !important;
+    max-height: var(--print-content-h, 240mm) !important;
+    overflow: hidden !important;
   }
   body.print-report .print-leave-signature { margin-top: auto !important; padding-top: 24px; }
   body.print-report table { width: 100% !important; min-width: 0 !important; table-layout: fixed; font-size: 9px; }

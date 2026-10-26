@@ -76,8 +76,8 @@ export default function DocumentPreviewModal({ doc, patient, onClose }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-        <button type="button" onClick={() => printReport({ orientation: 'portrait', bodyClass: isLeave ? 'print-leave' : undefined })} className="btn-warm-primary" style={{ padding: '8px 20px' }}>
+      <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+        <button type="button" onClick={() => printReport({ orientation: 'portrait', bodyClass: isLeave ? 'print-leave' : undefined, fit: !isLeave })} className="btn-warm-primary" style={{ padding: '8px 20px' }}>
           <Printer size={16} /> طباعة
         </button>
       </div>

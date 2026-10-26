@@ -7,7 +7,7 @@ import ItemStatementModal from '../supplies/ItemStatementModal';
 import { downloadCsv } from '../../utils/csv';
 import { printReport } from '../../utils/printReport';
 import { CollapseChevron, SectionHeader, TabCard } from '../../components/common/layout';
-import { accountingReport, adminReport, cashStatement, freeServicesReport, insuranceClaim, patientsRegistry } from './reportData';
+import { accountingReport, adminReport, cashStatement, collectReportUsers, freeServicesReport, insuranceClaim, patientsRegistry, userMatches } from './reportData';
 import { ChartGrid, CompareBars, HorizontalBars, ShareDonut, TrendLines } from './ReportCharts';
 import { ACTIONS } from '../../auth/permissions';
 import CashStatementModal from './CashStatementModal';
@@ -578,19 +578,35 @@ export default function ReportsTab({ invoices, patients, purchases, supplies, mo
     setPreset(next);
   };
 
-  const accounting = useMemo(() => accountingReport({ invoices, purchases, from, to }), [invoices, purchases, from, to]);
-  const admin = useMemo(() => adminReport({ patients, supplies, purchases, invoices, insuranceCompanies, from, to }), [patients, supplies, purchases, invoices, insuranceCompanies, from, to]);
+  // فلتر المستخدم: يقصر التقارير على ما أصدره/سجّله/قبضه مستخدم واحد (الفارغ = كل المستخدمين)
+  const [userId, setUserId] = useState('');
+  const reportUsers = useMemo(() => collectReportUsers({ invoices, purchases, patients }), [invoices, purchases, patients]);
+  const userOpt = reportUsers.find((u) => u.id === userId) ?? null;
 
-  const registry = useMemo(() => patientsRegistry({ patients, from, to }), [patients, from, to]);
-  const free = useMemo(() => freeServicesReport({ invoices, patients, from, to }), [invoices, patients, from, to]);
+  const scoped = useMemo(() => {
+    if (!userOpt) return { invoices, purchases, visitPatients: patients, registryPatients: patients };
+    return {
+      invoices: invoices.filter((i) => userMatches(userOpt, i.created_by, i.created_by_username)),
+      purchases: purchases.filter((p) => userMatches(userOpt, p.created_by, p.created_by_username)),
+      visitPatients: patients.map((p) => ({ ...p, visits: (p.visits ?? []).filter((v) => userMatches(userOpt, v.created_by ?? v.doctor, v.created_by_username)) })),
+      registryPatients: patients.filter((p) => userMatches(userOpt, p.registered_by, '')),
+    };
+  }, [userOpt, invoices, purchases, patients]);
 
-  const cash = useMemo(() => cashStatement({ invoices, from, to }), [invoices, from, to]);
+  const accounting = useMemo(() => accountingReport({ invoices: scoped.invoices, purchases: scoped.purchases, from, to }), [scoped, from, to]);
+  // سجل الزيارات يحتاج كل الفواتير ليجد فاتورة كل زيارة، والفلتر يُطبَّق على الزيارات نفسها
+  const admin = useMemo(() => adminReport({ patients: scoped.visitPatients, supplies, purchases: scoped.purchases, invoices, insuranceCompanies, from, to }), [scoped, supplies, invoices, insuranceCompanies, from, to]);
+
+  const registry = useMemo(() => patientsRegistry({ patients: scoped.registryPatients, from, to }), [scoped, from, to]);
+  const free = useMemo(() => freeServicesReport({ invoices: scoped.invoices, patients, from, to }), [scoped, patients, from, to]);
+
+  const cash = useMemo(() => cashStatement({ invoices, from, to, user: userOpt }), [invoices, from, to, userOpt]);
   const claim = useMemo(
-    () => (claimCompany ? insuranceClaim({ invoices, patients, company: claimCompany, from, to }) : null),
-    [invoices, patients, claimCompany, from, to]
+    () => (claimCompany ? insuranceClaim({ invoices: scoped.invoices, patients, company: claimCompany, from, to }) : null),
+    [scoped, patients, claimCompany, from, to]
   );
 
-  const periodLabel = from || to ? `من ${from ? formatDateDMY(from) : 'البداية'} إلى ${to ? formatDateDMY(to) : 'اليوم'}` : 'كل الفترات';
+  const periodLabel = `${from || to ? `من ${from ? formatDateDMY(from) : 'البداية'} إلى ${to ? formatDateDMY(to) : 'اليوم'}` : 'كل الفترات'}${userOpt ? ` • المستخدم: ${userOpt.label}` : ''}`;
 
   const tabStyle = (active) => ({
     ...outlineGoldButtonStyle,
@@ -627,6 +643,11 @@ export default function ReportsTab({ invoices, patients, purchases, supplies, mo
             </button>
           )}
 
+          <select value={userOpt ? userOpt.id : ''} onChange={(e) => setUserId(e.target.value)} className="warm-select" style={{ margin: 0, width: 'auto' }} aria-label="المستخدم">
+            <option value="">كل المستخدمين</option>
+            {reportUsers.map((u) => <option key={u.id} value={u.id}>{u.label}</option>)}
+          </select>
+
           <select value={preset} onChange={(e) => changePreset(e.target.value)} className="warm-select" style={{ margin: 0, width: 'auto' }} aria-label="الفترة الزمنية">
             {Object.entries(PRESETS).map(([key, p]) => (
               <option key={key} value={key}>{p.label}</option>
@@ -653,7 +674,7 @@ export default function ReportsTab({ invoices, patients, purchases, supplies, mo
 
       {statementOpen && canAdmin && <ItemStatementModal supplies={supplies} hearingAids={hearingAids} movements={movements} onClose={() => setStatementOpen(false)} />}
       {claim && canClaims && <InsuranceClaimModal data={claim} from={from} to={to} onClose={() => setClaimCompany(null)} />}
-      {cashOpen && canCash && <CashStatementModal data={cash} from={from} to={to} onClose={() => setCashOpen(false)} />}
+      {cashOpen && canCash && <CashStatementModal data={cash} from={from} to={to} userLabel={userOpt?.label} onClose={() => setCashOpen(false)} />}
     </TabCard>
   );
 }

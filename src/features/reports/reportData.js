@@ -29,6 +29,43 @@ function groupBy(list, keyFn, init, add, sortBy) {
   return [...map.values()].sort((a, b) => b[sortBy] - a[sortBy]);
 }
 
+// ===== فلتر المستخدم في التقارير =====
+// المستخدم يظهر في السجلات بالاسم واسم الدخول معاً (مُصدِر الفاتورة، منشئ الزيارة...) أو بالاسم فقط (من قبض الدفعة، من سجّل المريض).
+// نجمع كل ما يخص الشخص الواحد في خيار واحد حتى يطابق الفلتر السجلات بالصيغتين.
+export function collectReportUsers({ invoices = [], purchases = [], patients = [] }) {
+  const options = [];
+  const add = (name, username) => {
+    if (!name && !username) return;
+    let opt = options.find((o) => (username && o.usernames.has(username)) || (name && o.names.has(name)));
+    if (!opt) {
+      opt = { names: new Set(), usernames: new Set() };
+      options.push(opt);
+    }
+    if (name) opt.names.add(name);
+    if (username) opt.usernames.add(username);
+  };
+  invoices.forEach((i) => {
+    add(i.created_by, i.created_by_username);
+    (i.payments ?? []).forEach((p) => add(p.by, ''));
+  });
+  purchases.forEach((p) => add(p.created_by, p.created_by_username));
+  patients.forEach((p) => {
+    add(p.registered_by, '');
+    (p.visits ?? []).forEach((v) => add(v.created_by ?? v.doctor, v.created_by_username));
+  });
+  return options
+    .map((o) => {
+      const name = [...o.names][0];
+      const username = [...o.usernames][0];
+      return { ...o, id: username ?? name, label: formatUser(name, username) };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label, 'ar'));
+}
+
+// هل السجل (باسم و/أو اسم دخول) يخص المستخدم المختار؟ بلا خيار مختار = الكل.
+export const userMatches = (option, name, username) =>
+  !option || Boolean((username && option.usernames.has(username)) || (name && option.names.has(name)));
+
 // ===== التقارير المحاسبية =====
 export function accountingReport({ invoices, purchases, from, to }) {
   const list = invoices.filter((i) => inRange(i.date, from, to));
@@ -156,7 +193,8 @@ export function freeServicesReport({ invoices, patients, from, to }) {
 // ===== الكشف النقدي: الدخل اليومي =====
 // كل دفعة تُحسب في يوم قبضها (invoice.payments). الفواتير المدفوعة قبل تتبّع الدفعات (paid بلا سجل دفعات)
 // يُسنَد مبلغها لتاريخ الفاتورة ويُعلَّم legacy.
-export function cashStatement({ invoices, from, to }) {
+// user = خيار مستخدم اختياري: تُحسب الدفعات التي قبضها فقط (ومن لا قابض مسجَّل لها فبحسب مُصدِر الفاتورة)
+export function cashStatement({ invoices, from, to, user = null }) {
   const entries = [];
   invoices.forEach((inv) => {
     const logged = Array.isArray(inv.payments) ? inv.payments : [];
@@ -167,7 +205,8 @@ export function cashStatement({ invoices, from, to }) {
 
   const byDay = new Map();
   entries
-    .filter((e) => e.amount > 0 && inRange(e.date, from, to))
+    .filter((e) => (e.by ? userMatches(user, e.by, '') : userMatches(user, e.inv.created_by, e.inv.created_by_username)))
+    .filter((e) => e.amount !== 0 && inRange(e.date, from, to)) // الدفعات السالبة = مبالغ مردودة بسبب مرتجع
     .forEach((e) => {
       if (!byDay.has(e.date)) byDay.set(e.date, []);
       byDay.get(e.date).push({
@@ -179,6 +218,7 @@ export function cashStatement({ invoices, from, to }) {
         copayAmount: e.inv.insurance_company ? invoiceCopay(e.inv) : null,
         amount: round2(e.amount),
         legacy: e.legacy,
+        refund: e.amount < 0,
       });
     });
 

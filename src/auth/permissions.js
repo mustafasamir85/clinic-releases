@@ -6,6 +6,7 @@ export const ACTIONS = {
   CONFIRM_PAYMENT: 'invoices.confirm', // تأكيد دفع الفواتير
   EDIT_INVOICES: 'invoices.edit', // تعديل بنود الفواتير
   DELETE_INVOICES: 'invoices.delete', // حذف الفواتير
+  RETURN_SALES: 'sales.return', // مرتجع بيع المستلزمات (إرجاع أصناف إلى المخزون واسترداد قيمتها)
   ISSUE_DOCUMENTS: 'documents.issue', // إصدار التقارير الطبية والإجازات المرضية
   DELETE_DOCUMENTS: 'documents.delete', // حذف التقارير الطبية والإجازات المرضية
   // أقسام شاشة التقارير (شاشة التقارير تفتح الصفحة، وهذه تحدد ما يظهر فيها)
@@ -34,9 +35,7 @@ export const PERMISSION_GROUPS = [
       { id: TABS.BILLING, label: 'الفواتير والحسابات' },
       { id: TABS.REPORTS, label: 'التقارير' },
       { id: TABS.USERS, label: 'إدارة المستخدمين والصلاحيات' },
-      { id: TABS.UPDATES, label: 'تحديث البرنامج'  },
-      { id: TABS.BACKUP, label: 'اخذ نسخه احتياطيه'}
-
+      // النسخ الاحتياطي وتحديث البرنامج لمدير النظام فقط: ليسا صلاحيتين تُمنحان (يفرضه الخادم أيضاً)
     ],
   },
   {
@@ -46,6 +45,7 @@ export const PERMISSION_GROUPS = [
       { id: ACTIONS.CONFIRM_PAYMENT, label: 'تأكيد دفع الفواتير' },
       { id: ACTIONS.EDIT_INVOICES, label: 'تعديل بنود الفواتير' },
       { id: ACTIONS.DELETE_INVOICES, label: 'حذف الفواتير' },
+      { id: ACTIONS.RETURN_SALES, label: 'مرتجع بيع المستلزمات' },
       { id: ACTIONS.ISSUE_DOCUMENTS, label: 'إصدار التقارير الطبية والإجازات المرضية' },
       { id: ACTIONS.DELETE_DOCUMENTS, label: 'حذف التقارير الطبية والإجازات المرضية' },
     ],
@@ -85,7 +85,7 @@ export const ROLES = {
     label: 'محاسب',
     permissions: [
       TABS.BILLING, TABS.SALES, TABS.OFFERS, TABS.INSURANCE, TABS.PURCHASES, TABS.REPORTS,
-      ACTIONS.CONFIRM_PAYMENT, ACTIONS.EDIT_INVOICES,
+      ACTIONS.CONFIRM_PAYMENT, ACTIONS.EDIT_INVOICES, ACTIONS.RETURN_SALES,
       ACTIONS.REPORTS_ACCOUNTING, ACTIONS.REPORTS_ADMIN, ACTIONS.REPORTS_CASH, ACTIONS.REPORTS_CLAIMS,
     ],
   },

@@ -11,11 +11,11 @@ import FormActions from '../../components/common/FormActions';
 const REPORT_SUB = [ACTIONS.REPORTS_ACCOUNTING, ACTIONS.REPORTS_ADMIN, ACTIONS.REPORTS_CASH, ACTIONS.REPORTS_CLAIMS];
 const SCREEN_IDS = PERMISSION_GROUPS[0].items.map((i) => i.id);
 
-// actor = المستخدم الذي يعدّل. غير المدير لا يمنح إلا ما يملكه هو (يطابق فحص الخادم).
+// actor = المستخدم الذي يعدّل. غير المدير لا يمنح ولا يسحب إلا ما يملكه هو (يطابق فحص الخادم).
 export default function UserModal({ user, actor, isSelf, onSave, onClose, minPassword }) {
   const actorIsAdmin = actor?.role === 'admin';
   const initialPerms = user?.permissions ?? [];
-  const canGrant = (id) => actorIsAdmin || (actor?.permissions ?? []).includes(id) || initialPerms.includes(id);
+  const canGrant = (id) => actorIsAdmin || (actor?.permissions ?? []).includes(id);
   const [form, setForm] = useState({
     name: user?.name ?? '',
     username: user?.username ?? '',
@@ -31,8 +31,8 @@ export default function UserModal({ user, actor, isSelf, onSave, onClose, minPas
   const handleRole = (e) => {
     const role = e.target.value;
     setForm((f) => ({ ...f, role }));
-    // غير المدير يحصل على الجزء من القالب الذي يملك صلاحية منحه فقط
-    setPermissions(ROLES[role].permissions.filter(canGrant));
+    // غير المدير يحصل على الجزء من القالب الذي يملك صلاحية منحه فقط، وما لا يملك سحبه من المستخدم يبقى كما هو
+    setPermissions([...new Set([...ROLES[role].permissions.filter(canGrant), ...initialPerms.filter((id) => !canGrant(id))])]);
   };
 
   const isAdminRole = form.role === 'admin';
@@ -42,7 +42,8 @@ export default function UserModal({ user, actor, isSelf, onSave, onClose, minPas
   const normalize = (list) => {
     let next = list;
     if (REPORT_SUB.some((id) => next.includes(id)) && !next.includes(TABS.REPORTS)) next = [...next, TABS.REPORTS];
-    if (!next.includes(TABS.REPORTS)) next = next.filter((id) => !REPORT_SUB.includes(id));
+    if (!next.includes(TABS.REPORTS)) next = next.filter((id) => !REPORT_SUB.includes(id) || !canGrant(id)); // ما لا يملك المعدِّل سحبه يبقى (فتبقى الشاشة معه)
+    if (REPORT_SUB.some((id) => next.includes(id)) && !next.includes(TABS.REPORTS)) next = [...next, TABS.REPORTS];
     return next;
   };
 
@@ -90,7 +91,7 @@ export default function UserModal({ user, actor, isSelf, onSave, onClose, minPas
 
         <div style={{ ...twoColumns, marginTop: '12px' }}>
           <Field label="الدور الوظيفي" required>
-            <select className="warm-select" value={form.role} onChange={handleRole} disabled={isSelf}>
+            <select className="warm-select" value={form.role} onChange={handleRole} disabled={isSelf || user?.role === 'admin'}>
               {Object.entries(ROLES).filter(([key]) => actorIsAdmin || key !== 'admin' || form.role === 'admin').map(([key, r]) => (
                 <option key={key} value={key}>{r.label}</option>
               ))}
@@ -101,8 +102,8 @@ export default function UserModal({ user, actor, isSelf, onSave, onClose, minPas
           </Field>
         </div>
 
-        {isAdminRole && <p style={{ fontSize: '12px', color: COLORS.muted ?? COLORS.text, margin: '14px 0 0 0' }}>مدير النظام يملك جميع الصلاحيات تلقائياً.</p>}
-        {!actorIsAdmin && <p style={{ fontSize: '12px', color: COLORS.muted ?? COLORS.text, margin: '10px 0 0 0' }}>الخيارات المعطّلة صلاحيات لا تملكها أنت، فلا يمكنك منحها.</p>}
+        {isAdminRole && <p style={{ fontSize: '12px', color: COLORS.muted ?? COLORS.text, margin: '14px 0 0 0' }}>مدير النظام يملك جميع الصلاحيات تلقائياً، ولا يمكن لأحد تغيير دوره أو صلاحياته.</p>}
+        {!actorIsAdmin && <p style={{ fontSize: '12px', color: COLORS.muted ?? COLORS.text, margin: '10px 0 0 0' }}>الخيارات المعطّلة صلاحيات لا تملكها أنت، فلا يمكنك منحها ولا سحبها.</p>}
 
         {PERMISSION_GROUPS.map((group) => {
           const count = group.items.filter((i) => effective.includes(i.id)).length;
