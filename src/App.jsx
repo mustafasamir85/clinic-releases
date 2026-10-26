@@ -141,6 +141,9 @@ export default function App() {
     if (!auth.can(ACTIONS.RETURN_SALES)) return 'ليست لديك صلاحية مرتجع بيع المستلزمات.';
     const result = buildSaleReturn({ invoice, supplies: supplies.items, selections, reason, user: auth.currentUser, id: newId(), date: getToday() });
     if (result.error) return result.error;
+    if (result.stockBack.length > 0 && !auth.can('supplies') && !auth.can('purchases')) {
+      return 'إعادة الأصناف إلى المخزون تتطلب صلاحية المستلزمات أو المشتريات.';
+    }
 
     const refund = applySaleReturn(invoice.id, { entry: result.entry, newItems: result.items, stockLines: result.stockLines });
     if (result.stockBack.length > 0) {
