@@ -1,7 +1,28 @@
 // أنواع الوثائق التي تصدرها العيادة للمريض
 export const DOC_TYPES = {
-  report: { label: 'تقرير طبي', prefix: 'MR' },
-  leave: { label: 'إجازة مرضية', prefix: 'SL' },
+  report: { label: 'تقرير طبي', labelEn: 'Medical Report', prefix: 'MR' },
+  leave: { label: 'إجازة مرضية', labelEn: 'Sick Leave Certificate', prefix: 'SL' },
+};
+
+// لغة الوثيقة: العربية افتراضية، والوثائق القديمة بلا lang عربية
+export const DOC_LANGS = { ar: 'العربية', en: 'English' };
+export const isEnglishDoc = (doc) => doc?.lang === 'en';
+
+// اسم نوع الوثيقة بلغتها (وللقوائم: الإنجليزية تُميَّز بـ EN)
+export const docLabel = (doc) => (isEnglishDoc(doc) ? `${DOC_TYPES[doc.type].labelEn} (EN)` : DOC_TYPES[doc.type].label);
+
+// تاريخ YYYY-MM-DD بصيغة إنجليزية مقروءة: 27 October 2026 (بالتوقيت المحلي لتفادي إزاحة اليوم)
+export const formatDateEN = (date) => {
+  if (!date) return '';
+  const [y, m, d] = date.split('-').map(Number);
+  if (!y || !m || !d) return date;
+  return new Date(y, m - 1, d).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+};
+
+// يخمّن اسماً إنجليزياً للمريض: الحقل المحفوظ name_en إن وُجد، وإلا اسمه إن كان مكتوباً بحروف لاتينية
+export const guessEnglishName = (patient) => {
+  if (patient?.name_en) return patient.name_en;
+  return /^[\x00-\x7F\s.'-]+$/.test(patient?.name ?? '') ? patient.name : '';
 };
 
 // يضيف أياماً لتاريخ YYYY-MM-DD ويعيد YYYY-MM-DD (بالتوقيت المحلي لتفادي إزاحة اليوم)
@@ -27,3 +48,9 @@ export const nextDocumentNo = (patients, type) => {
 
 // ألفاظ حسب الجنس
 export const honorific = (patient) => (patient?.gender === 'أنثى' ? 'السيدة' : 'السيد');
+
+// ألفاظ إنجليزية حسب الجنس: Mr./Ms. والضمائر
+export const englishTerms = (patient) =>
+  patient?.gender === 'أنثى'
+    ? { title: 'Ms.', subject: 'she', possessive: 'her' }
+    : { title: 'Mr.', subject: 'he', possessive: 'his' };

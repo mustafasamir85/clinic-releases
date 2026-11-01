@@ -5,10 +5,12 @@ import { COLORS } from '../../styles';
 import { formatMoney } from '../../utils/format';
 import Modal from '../../components/common/Modal';
 import { EditDeleteActions } from '../../components/common/layout';
+import { useConfirm } from '../../components/common/ConfirmDialog';
 
 const EMPTY_FORM = { brand: '', model: '', type: 'RIC', price: '' };
 
 export default function HearingAidManagerModal({ list, onNotify, onClose, onReceiveStock }) {
+  const confirm = useConfirm();
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
 
@@ -42,8 +44,8 @@ export default function HearingAidManagerModal({ list, onNotify, onClose, onRece
     setForm({ brand: aid.brand, model: aid.model, type: aid.type, price: String(aid.price ?? '') });
   };
 
-  const handleDelete = (id) => {
-    if (!window.confirm('هل أنت متأكد من حذف هذه السماعة؟')) return;
+  const handleDelete = async (id) => {
+    if (!(await confirm({ title: 'حذف السماعة', message: 'هل أنت متأكد من حذف هذه السماعة؟', confirmLabel: 'حذف السماعة', danger: true }))) return;
     list.remove(id);
     if (id === editingId) resetForm();
     onNotify('تم حذف السماعة من قاعدة البيانات.');

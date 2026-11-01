@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Briefcase, Package, Plus, Trash2 } from 'lucide-react';
+import { Briefcase, Package, Trash2 } from 'lucide-react';
 import { Panel } from './layout';
 import { COLORS, iconButtonStyle } from '../../styles';
 import { formatMoney } from '../../utils/format';
@@ -53,16 +53,14 @@ const itemStyle = { display: 'flex', justifyContent: 'space-between', alignItems
 // اختيار الإجراءات الطبية والمستلزمات المستخدمة في الزيارة (تُحسب في الفاتورة وتُخصم من المخزون)
 // procedures: خدمات القسم، supplies: قائمة المخزون
 export default function ChargesPicker({ procedures, supplies, value, onChange, offers = [], services = [] }) {
-  const [procId, setProcId] = useState('');
-  const [suppId, setSuppId] = useState('');
   const [qty, setQty] = useState('1');
   const [error, setError] = useState('');
 
-  const addProcedure = () => {
-    const proc = procedures.find((p) => String(p.id) === procId);
+  // يُضاف الإجراء فور اختياره من القائمة (بلا زر إضافة)
+  const addProcedure = (id) => {
+    const proc = procedures.find((p) => String(p.id) === String(id));
     if (!proc || value.procedures.some((p) => p.id === proc.id)) return;
     onChange({ ...value, procedures: [...value.procedures, { id: proc.id, name: proc.name, price: proc.price }] });
-    setProcId('');
   };
 
   const toggleFree = (id) =>
@@ -71,8 +69,9 @@ export default function ChargesPicker({ procedures, supplies, value, onChange, o
   const removeProcedure = (id) =>
     onChange({ ...value, procedures: value.procedures.filter((p) => p.id !== id) });
 
-  const addSupply = () => {
-    const item = supplies.find((s) => String(s.id) === suppId);
+  // يُضاف المستلزم فور اختياره بالكمية المكتوبة في خانة الكمية (الافتراضي 1)؛ اختياره مرة أخرى يزيد الكمية
+  const addSupply = (id) => {
+    const item = supplies.find((s) => String(s.id) === String(id));
     const amount = Math.floor(Number(qty));
     if (!item || !(amount >= 1)) return;
 
@@ -87,7 +86,6 @@ export default function ChargesPicker({ procedures, supplies, value, onChange, o
       ? value.supplies.map((s) => (s.id === item.id ? { ...s, qty: s.qty + amount } : s))
       : [...value.supplies, { id: item.id, name: item.name, price: item.price, unit: item.unit, qty: amount }];
     onChange({ ...value, supplies: next });
-    setSuppId('');
     setQty('1');
   };
 
@@ -96,17 +94,13 @@ export default function ChargesPicker({ procedures, supplies, value, onChange, o
   return (
     <div style={boxStyle}>
       <Panel title="الإجراءات الطبية المنفّذة" icon={Briefcase} style={panelInnerStyle}>
-      <div style={{ display: 'grid', gridTemplateColumns: '4fr 1fr', gap: '10px' }}>
-        <select value={procId} onChange={(e) => setProcId(e.target.value)} className="warm-select" style={{ margin: 0 }}>
-          <option value="">اختر إجراءً من قائمة الخدمات...</option>
-          {procedures.map((p) => (
-            <option key={p.id} value={p.id}>{p.name} — {formatMoney(p.price)}</option>
-          ))}
-        </select>
-        <button type="button" onClick={addProcedure} className="btn-warm-primary" style={{ height: '42px', padding: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <Plus size={18} /> إضافة
-        </button>
-      </div>
+      {/* value ثابتة على "" كي تعود القائمة لنص الاختيار بعد كل إضافة */}
+      <select value="" onChange={(e) => addProcedure(e.target.value)} className="warm-select" style={{ margin: 0 }}>
+        <option value="">اختر إجراءً من قائمة الخدمات...</option>
+        {procedures.filter((p) => !value.procedures.some((x) => x.id === p.id)).map((p) => (
+          <option key={p.id} value={p.id}>{p.name} — {formatMoney(p.price)}</option>
+        ))}
+      </select>
 
       {value.procedures.length > 0 && (
         <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -133,19 +127,16 @@ export default function ChargesPicker({ procedures, supplies, value, onChange, o
       </Panel>
 
       <Panel title="المستلزمات الطبية المستخدمة" icon={Package} style={panelInnerStyle}>
-      <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr', gap: '10px' }}>
-        <select value={suppId} onChange={(e) => { setSuppId(e.target.value); setError(''); }} className="warm-select" style={{ margin: 0 }}>
-          <option value="">اختر مستلزماً من المخزون...</option>
+      <div style={{ display: 'grid', gridTemplateColumns: '4fr 1fr', gap: '10px' }}>
+        <select value="" onChange={(e) => { setError(''); addSupply(e.target.value); }} className="warm-select" style={{ margin: 0 }}>
+          <option value="">اختر مستلزماً من المخزون (يُضاف بالكمية المحددة)...</option>
           {supplies.map((s) => (
             <option key={s.id} value={s.id} disabled={s.stock <= 0}>
               {s.name} — متوفر {s.stock} {s.unit} — {formatMoney(s.price)}
             </option>
           ))}
         </select>
-        <input type="number" min="1" step="1" value={qty} onChange={(e) => setQty(e.target.value)} className="warm-input" placeholder="الكمية" style={{ margin: 0 }} />
-        <button type="button" onClick={addSupply} className="btn-warm-primary" style={{ height: '42px', padding: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <Plus size={18} /> إضافة
-        </button>
+        <input type="number" min="1" step="1" value={qty} onChange={(e) => setQty(e.target.value)} className="warm-input" placeholder="الكمية" aria-label="الكمية" style={{ margin: 0 }} />
       </div>
       {error && <span style={{ color: COLORS.danger, fontSize: '12px', fontWeight: '700', display: 'block', marginTop: '6px' }}>{error}</span>}
 

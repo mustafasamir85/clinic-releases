@@ -4,9 +4,11 @@ import { roleLabel } from '../../auth/permissions';
 import { Panel, EditDeleteActions, IconBadge, ListRow, SectionHeader, TabCard } from '../../components/common/layout';
 import StatusBadge from '../../components/common/StatusBadge';
 import UserModal from './UserModal';
+import { useConfirm } from '../../components/common/ConfirmDialog';
 
 // إدارة المستخدمين والصلاحيات. auth = نتيجة useAuth.
 export default function UsersTab({ auth, onNotify }) {
+  const confirm = useConfirm();
   const [modal, setModal] = useState(null); // null | { user? }
   const { users, currentUser } = auth;
 
@@ -20,9 +22,10 @@ export default function UsersTab({ auth, onNotify }) {
   };
 
   const handleDelete = async (u) => {
-    if (!window.confirm(`حذف المستخدم "${u.name}" نهائياً؟`)) return;
+    if (!(await confirm({ title: 'حذف المستخدم', message: `حذف المستخدم "${u.name}" نهائياً؟`, confirmLabel: 'حذف المستخدم', danger: true }))) return;
     const error = await auth.removeUser(u.id);
-    onNotify(error ?? 'تم حذف المستخدم.', 4000);
+    if (error) onNotify(error, { type: 'error', duration: 4000 });
+    else onNotify('تم حذف المستخدم.', 4000);
   };
 
   return (
@@ -47,7 +50,7 @@ export default function UsersTab({ auth, onNotify }) {
               key={u.id}
               leading={<IconBadge icon={UserCog} />}
               title={`${u.name}${isSelf ? ' (أنت)' : ''}`}
-              subtitle={`@${u.username} • ${roleLabel(u.role)} • ${u.permissions.length} صلاحية`}
+              subtitle={`${u.name_en ? `${u.name_en} • ` : ''}@${u.username} • ${roleLabel(u.role)} • ${u.permissions.length} صلاحية`}
             >
               <StatusBadge tone={u.active ? 'success' : 'danger'}>{u.active ? 'فعّال' : 'معطّل'}</StatusBadge>
               <EditDeleteActions onEdit={() => setModal({ user: u })} onDelete={() => handleDelete(u)} />

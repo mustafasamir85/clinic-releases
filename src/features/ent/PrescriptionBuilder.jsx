@@ -10,7 +10,7 @@ import { COLORS, iconButtonStyle } from '../../styles';
 
 export const formatPrescription = (meds) =>
   meds
-    .map((m) => `${m.name}${m.active_ingredient ? ` (${m.active_ingredient})` : ''} — ${m.usage}`)
+    .map((m) => `${m.name} — ${m.usage}`) // بلا المادة الفعالة
     .join(' ، ');
 
 const getMedText = (m) => `${m.name} ${m.active_ingredient ?? ''}`;
@@ -55,7 +55,6 @@ export default function PrescriptionBuilder({ meds, onChange, medications = [], 
       {
         id: newId(),
         name,
-        active_ingredient: selectedMedication?.active_ingredient ?? '',
         usage: usage.trim() || DEFAULT_USAGE,
       },
     ]);

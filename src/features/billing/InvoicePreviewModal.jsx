@@ -1,6 +1,6 @@
 import { X } from 'lucide-react';
 import { PrintHeader } from '../../components/common/PrintBrand';
-import { DOCTOR_NAME, INVOICE_STATUS } from '../../constants';
+import { DOCTOR_NAME, INVOICE_STATUS, paymentMethodLabel } from '../../constants';
 import { COLORS } from '../../styles';
 import { formatDateDMY, formatMoney, formatUser } from '../../utils/format';
 import Modal from '../../components/common/Modal';
@@ -31,11 +31,11 @@ export default function InvoicePreviewModal({ invoice, onClose }) {
 
   return (
     <Modal maxWidth={560} header={header} onClose={onClose}>
-      <h2 style={{ textAlign: 'center', margin: '0 0 14px', fontSize: '22px', fontWeight: '800', color: COLORS.ink }}>فاتورة</h2>
+      <h2 style={{ textAlign: 'center', margin: '0 0 14px', fontSize: '22px', fontWeight: '800', color: COLORS.ink }}>سند قبض</h2>
 
       <div style={{ background: COLORS.card, padding: '16px', borderRadius: '12px', border: `1px solid ${COLORS.border}`, marginBottom: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '13px' }}>
-          <div><strong style={{ color: COLORS.muted }}>رقم الفاتورة:</strong> <span style={{ fontWeight: '800', color: COLORS.gold }}>{invoice.inv_no}</span></div>
+          <div><strong style={{ color: COLORS.muted }}>رقم السند:</strong> <span style={{ fontWeight: '800', color: COLORS.gold }}>{invoice.inv_no}</span></div>
           <div><strong style={{ color: COLORS.muted }}>تاريخ الإصدار:</strong> <span>{formatDateDMY(invoice.date)}</span></div>
         </div>
         <div style={{ fontSize: '13px' }}>
@@ -114,7 +114,7 @@ export default function InvoicePreviewModal({ invoice, onClose }) {
             {receipts.map((p, i) => (
               <li key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', borderBottom: `1px dashed ${COLORS.border}`, paddingBottom: '4px' }}>
                 <span>
-                  {formatDateDMY(p.date)} — {p.amount < 0 ? 'ردّها (مرتجع):' : 'استلمها:'} <strong>{p.by || '—'}</strong>
+                  {formatDateDMY(p.date)} — {p.amount < 0 ? 'ردّها (مرتجع):' : 'استلمها:'} <strong>{p.by || '—'}</strong> • {paymentMethodLabel(p.method)}
                 </span>
                 <strong style={{ color: p.amount < 0 ? COLORS.danger : COLORS.successText }}>{formatMoney(p.amount)}</strong>
               </li>

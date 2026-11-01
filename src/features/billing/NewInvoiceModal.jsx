@@ -12,6 +12,8 @@ import InsuranceSelector, { insuranceDetails } from '../../components/common/Ins
 import { isOfferRunning, offerValueText, withOffer } from '../offers/offerUtils';
 import InvoiceItemsEditor, { cleanItems, newItem } from '../../components/common/InvoiceItemsEditor';
 import { expandFree } from '../freeServices/freeUtils';
+import { DEFAULT_PAYMENT_METHOD } from '../../constants';
+import PaymentMethodSelect from '../../components/common/PaymentMethodSelect';
 
 const round2 = (n) => Math.round(n * 100) / 100;
 
@@ -20,6 +22,7 @@ export default function NewInvoiceModal({ patients, insuranceCompanies, offers, 
   const [patient, setPatient] = useState(null);
   const [items, setItems] = useState([newItem()]);
   const [paid, setPaid] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState(DEFAULT_PAYMENT_METHOD);
   const [insurance, setInsurance] = usePatientInsurance(patient);
   const [error, setError] = useState('');
   const [offerId, setOfferId] = useState('');
@@ -49,12 +52,13 @@ export default function NewInvoiceModal({ patients, insuranceCompanies, offers, 
       patientId: patient.id,
       items: withDiscount,
       paid: paidNum,
+      paymentMethod,
       insurance: details.insurance_company ? { name: details.insurance_company, copay: details.insurance_copay } : null,
     });
   };
 
   return (
-    <Modal title="إصدار فاتورة جديدة" icon={DollarSign} maxWidth={720} onClose={onClose}>
+    <Modal warnUnsaved title="إصدار فاتورة جديدة" icon={DollarSign} maxWidth={720} onClose={onClose}>
       <form onSubmit={handleSubmit}>
         <PatientSearch patients={patients} patient={patient} onSelect={setPatient} />
 
@@ -88,6 +92,8 @@ export default function NewInvoiceModal({ patients, insuranceCompanies, offers, 
             دفع كامل المستحق
           </button>
         </div>
+
+        {Number(paid) > 0 && <PaymentMethodSelect value={paymentMethod} onChange={setPaymentMethod} style={{ marginTop: '12px' }} />}
 
         <div style={{ marginTop: '14px', background: COLORS.soft, borderRadius: '10px', padding: '10px 16px', fontSize: '13px', fontWeight: '700', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
           <span>الإجمالي: {formatMoney(total)}</span>

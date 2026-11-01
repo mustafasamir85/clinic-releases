@@ -1,5 +1,5 @@
-import { LOW_STOCK_THRESHOLD } from '../../constants';
-import { invoiceCopay, invoiceItems, patientDue } from '../../hooks/useInvoices';
+import { LOW_STOCK_THRESHOLD, PAYMENT_METHODS } from '../../constants';
+import { invoiceCopay, invoiceItems, patientDue, paymentMethodOf } from '../../hooks/useInvoices';
 import { freeEntries } from '../freeServices/freeUtils';
 import { formatUser, getFileNumber } from '../../utils/format';
 
@@ -190,6 +190,10 @@ export function freeServicesReport({ invoices, patients, from, to }) {
   };
 }
 
+// مجموع المبالغ لكل طريقة دفع: { cash, card } (المرتجعات السالبة تُنقص من طريقة ردّها)
+const methodTotals = (rows) =>
+  Object.values(PAYMENT_METHODS).reduce((acc, method) => ({ ...acc, [method]: sum(rows.filter((r) => r.method === method), (r) => r.amount) }), {});
+
 // ===== الكشف النقدي: الدخل اليومي =====
 // كل دفعة تُحسب في يوم قبضها (invoice.payments). الفواتير المدفوعة قبل تتبّع الدفعات (paid بلا سجل دفعات)
 // يُسنَد مبلغها لتاريخ الفاتورة ويُعلَّم legacy.
@@ -198,9 +202,9 @@ export function cashStatement({ invoices, from, to, user = null }) {
   const entries = [];
   invoices.forEach((inv) => {
     const logged = Array.isArray(inv.payments) ? inv.payments : [];
-    logged.forEach((p) => entries.push({ date: p.date, amount: Number(p.amount) || 0, inv, legacy: false, by: p.by || '' }));
+    logged.forEach((p) => entries.push({ date: p.date, amount: Number(p.amount) || 0, inv, legacy: false, by: p.by || '', method: paymentMethodOf(p) }));
     const legacy = round2((Number(inv.paid) || 0) - sum(logged, (p) => p.amount));
-    if (legacy > 0) entries.push({ date: inv.date, amount: legacy, inv, legacy: true });
+    if (legacy > 0) entries.push({ date: inv.date, amount: legacy, inv, legacy: true, method: paymentMethodOf(null) }); // قبل تتبّع الدفعات: نقدي
   });
 
   const byDay = new Map();
@@ -217,6 +221,7 @@ export function cashStatement({ invoices, from, to, user = null }) {
         insuranceCompany: e.inv.insurance_company || '',
         copayAmount: e.inv.insurance_company ? invoiceCopay(e.inv) : null,
         amount: round2(e.amount),
+        method: e.method,
         legacy: e.legacy,
         refund: e.amount < 0,
       });
@@ -228,11 +233,13 @@ export function cashStatement({ invoices, from, to, user = null }) {
       date,
       rows: rows.sort((a, b) => String(a.invNo).localeCompare(String(b.invNo))),
       total: sum(rows, (r) => r.amount),
+      byMethod: methodTotals(rows),
     }));
 
   return {
     days,
     total: sum(days, (d) => d.total),
+    byMethod: methodTotals(days.flatMap((d) => d.rows)), // إجمالي كل طريقة دفع في الفترة (النقدي / البطاقات)
     count: days.reduce((n, d) => n + d.rows.length, 0),
     hasLegacy: days.some((d) => d.rows.some((r) => r.legacy)),
   };

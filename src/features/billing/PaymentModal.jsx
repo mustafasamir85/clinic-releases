@@ -3,6 +3,8 @@ import { Wallet } from 'lucide-react';
 import { COLORS } from '../../styles';
 import { formatMoney } from '../../utils/format';
 import { patientDue } from '../../hooks/useInvoices';
+import { DEFAULT_PAYMENT_METHOD } from '../../constants';
+import PaymentMethodSelect from '../../components/common/PaymentMethodSelect';
 import Modal from '../../components/common/Modal';
 import Field from '../../components/common/Field';
 import FormActions from '../../components/common/FormActions';
@@ -14,6 +16,7 @@ export default function PaymentModal({ invoice, onSubmit, onClose }) {
   const due = patientDue(invoice);
   const remaining = round2(due - invoice.paid);
   const [amount, setAmount] = useState(String(remaining));
+  const [method, setMethod] = useState(DEFAULT_PAYMENT_METHOD);
   const [error, setError] = useState('');
 
   const handleSubmit = (e) => {
@@ -23,11 +26,11 @@ export default function PaymentModal({ invoice, onSubmit, onClose }) {
       setError(`أدخل مبلغاً أكبر من 0 ولا يتجاوز المتبقي (${formatMoney(remaining)}).`);
       return;
     }
-    onSubmit(invoice.id, value);
+    onSubmit(invoice.id, value, method);
   };
 
   return (
-    <Modal title="تسجيل دفعة" subtitle={`${invoice.inv_no} — ${invoice.patient_name}`} icon={Wallet} maxWidth={440} onClose={onClose}>
+    <Modal warnUnsaved title="تسجيل دفعة" subtitle={`${invoice.inv_no} — ${invoice.patient_name}`} icon={Wallet} maxWidth={440} onClose={onClose}>
       <form onSubmit={handleSubmit}>
         <div style={{ background: COLORS.soft, borderRadius: '10px', padding: '12px 16px', fontSize: '13px', fontWeight: '700', display: 'grid', gap: '4px', marginBottom: '14px' }}>
           <span>المستحق على المريض: {formatMoney(due)}</span>
@@ -38,6 +41,8 @@ export default function PaymentModal({ invoice, onSubmit, onClose }) {
         <Field label="المبلغ المدفوع الآن (د.أ)" required>
           <input type="number" min="0.01" max={remaining} step="0.01" className="warm-input" value={amount} onChange={(e) => setAmount(e.target.value)} required autoFocus />
         </Field>
+
+        <PaymentMethodSelect value={method} onChange={setMethod} style={{ marginTop: '14px' }} />
 
         {error && <p style={{ color: COLORS.danger, fontSize: '13px', fontWeight: '700', margin: '10px 0 0 0' }} role="alert">{error}</p>}
 

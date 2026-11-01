@@ -36,7 +36,7 @@ export default function AppointmentModal({ item, patients, defaultDate, onSubmit
   };
 
   return (
-    <Modal title={item ? 'تعديل الموعد' : 'حجز موعد جديد'} icon={CalendarPlus} maxWidth={560} onClose={onClose}>
+    <Modal warnUnsaved title={item ? 'تعديل الموعد' : 'حجز موعد جديد'} icon={CalendarPlus} maxWidth={560} onClose={onClose}>
       <form onSubmit={handleSubmit}>
         <PatientSearch patients={patients} patient={patient ?? (item ? { name: item.patient_name } : null)} onSelect={setPatient} />
 

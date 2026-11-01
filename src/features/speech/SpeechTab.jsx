@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Mic, Send } from 'lucide-react';
 import { DEPARTMENTS } from '../../constants';
 import { usePatientInsurance } from '../../hooks/usePatientInsurance';
+import { useDraft } from '../../hooks/useDraft';
+import DraftBanner from '../../components/common/DraftBanner';
 import { SectionHeader, TabCard } from '../../components/common/layout';
 import Field from '../../components/common/Field';
 import DiagnosisInput from '../../components/common/DiagnosisInput';
@@ -22,13 +24,32 @@ import { formatMoney } from '../../utils/format';
 import { handleEnterAsTab } from '../../utils/form';
 import { withOffer } from '../offers/offerUtils';
 
-export default function SpeechTab({ patient, patients, offers = [], services, supplies, insuranceCompanies, onSelectPatient, onAddVisit, appointments, onPickAppointment }) {
+export default function SpeechTab({ patient, patients, offers = [], services, supplies, insuranceCompanies, onSelectPatient, onAddVisit, appointments, onPickAppointment, draftUser }) {
   const [assessment, setAssessment] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
   const [plan, setPlan] = useState('');
   const [charges, setCharges] = useState(EMPTY_CHARGES);
   const [insurance, setInsurance, resetInsurance] = usePatientInsurance(patient);
   const [discount, setDiscount] = useState('');
+
+  // مسودة تلقائية للجلسة (تُستدعى بعد usePatientInsurance كي يُطبَّق التأمين المسترجع أخيراً)
+  const draft = useDraft({
+    userKey: draftUser,
+    scope: 'speech',
+    patient,
+    patients,
+    onSelectPatient,
+    values: { assessment, diagnosis, plan, charges, discount, insurance },
+    hasContent: Boolean(assessment.trim() || diagnosis.trim() || plan.trim() || hasCharges(charges) || discount),
+    onRestore: (v) => {
+      setAssessment(v.assessment ?? '');
+      setDiagnosis(v.diagnosis ?? '');
+      setPlan(v.plan ?? '');
+      setCharges(v.charges ?? EMPTY_CHARGES);
+      setDiscount(v.discount ?? '');
+      if (v.insurance) setInsurance(v.insurance);
+    },
+  });
 
   const speechServices = services.filter((s) => s.dept === DEPARTMENTS.SPEECH);
   const subtotal = Math.max(0, Math.round((chargesTotal(charges) - withOffer(chargesItems(charges), charges.offerId, offers, services).discount) * 100) / 100);
@@ -62,6 +83,7 @@ export default function SpeechTab({ patient, patients, offers = [], services, su
     setCharges(EMPTY_CHARGES);
     setDiscount('');
     resetInsurance();
+    draft.clear(); // الجلسة حُفظت: لا حاجة للمسودة
   };
 
   return (
@@ -69,6 +91,8 @@ export default function SpeechTab({ patient, patients, offers = [], services, su
       <SectionHeader title="جلسات علاج النطق والتخاطب" icon={Mic} />
       <AppointmentQueue appointments={appointments} department={DEPARTMENTS.SPEECH} currentPatient={patient} onPick={onPickAppointment} />
       <PatientSearch patients={patients} patient={patient} onSelect={onSelectPatient} />
+
+      <DraftBanner draft={draft} />
 
       <form onSubmit={handleSubmit}>
         <Field label="التشخيص" optional large collapsible>

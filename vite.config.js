@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    base: '/clinic-releases/',
+    base: './',
     server: {
       proxy: {
         '/api': {

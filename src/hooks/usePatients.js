@@ -81,6 +81,20 @@ export function usePatients(enabled) {
     [patients]
   );
 
+  // تعديل البيانات الشخصية فقط (الزيارات والوثائق ورقم الملف والتأمين لا تتغير)
+  const updatePatient = useCallback((patientId, form) => {
+    const changes = {
+      name: form.name.trim(),
+      birth_date: form.birthDate,
+      age: calculateAge(form.birthDate),
+      gender: form.gender,
+      phone: form.phone.trim(),
+      email: form.email.trim(),
+      address: form.address.trim(),
+    };
+    setPatients((prev) => prev.map((p) => (p.id === patientId ? { ...p, ...changes } : p)));
+  }, []);
+
   const addVisit = useCallback(
     (department, details = {}) => {
       if (!selectedPatient) return null;
@@ -171,6 +185,7 @@ export function usePatients(enabled) {
     clearSelection,
     selectVisit: setSelectedVisitId,
     addPatient,
+    updatePatient,
     addVisit,
     updateVisit,
     deleteVisit,

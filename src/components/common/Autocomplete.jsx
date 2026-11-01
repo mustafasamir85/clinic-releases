@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { COLORS } from '../../styles';
 import { normalizeArabic } from '../../utils/suggestions';
 
@@ -21,9 +21,13 @@ export default function Autocomplete({
   rows = 2,
   required = false,
   autoFocus = false,
+  id, // يمرّره Field لربط التسمية بالحقل
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
 }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
+  const listId = useId();
   const query = value.trim();
   const normalizedQuery = normalizeArabic(value); // بحث لا يتأثر بالتشكيل ولا بكتابة الهمزة/التاء المربوطة
 
@@ -31,6 +35,8 @@ export default function Autocomplete({
     if (query.length < minChars) return [];
     return prefiltered ? items : items.filter((item) => normalizeArabic(getText(item)).includes(normalizedQuery));
   }, [items, query, normalizedQuery, minChars, getText, prefiltered]);
+
+  const listOpen = open && matches.length > 0;
 
   const pick = (item) => {
     setOpen(false);
@@ -51,6 +57,7 @@ export default function Autocomplete({
         return;
       }
       if (e.key === 'Escape') {
+        e.preventDefault(); // يغلق قائمة الاقتراحات فقط دون أن تُغلق النافذة التي تحويها
         setOpen(false);
         return;
       }
@@ -64,11 +71,21 @@ export default function Autocomplete({
       <Field
         ref={inputRef}
         {...(multiline ? { rows, className: 'warm-textarea' } : { type: 'text', className: 'warm-input' })}
+        id={id}
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid}
         placeholder={placeholder}
         value={value}
         required={required}
         autoFocus={autoFocus}
         autoComplete="off"
+        {...(!multiline && {
+          role: 'combobox',
+          'aria-autocomplete': 'list',
+          'aria-expanded': listOpen,
+          'aria-controls': listOpen ? listId : undefined,
+          'aria-activedescendant': listOpen && active >= 0 ? `${listId}-${active}` : undefined,
+        })}
         onChange={(e) => {
           onChange(e.target.value);
           setOpen(true);
@@ -80,8 +97,9 @@ export default function Autocomplete({
         style={{ margin: 0 }}
       />
 
-      {open && matches.length > 0 && (
+      {listOpen && (
         <div
+          id={listId}
           role="listbox"
           style={{
             position: 'absolute',
@@ -101,6 +119,7 @@ export default function Autocomplete({
           {matches.map((item, idx) => (
             <div
               key={idx}
+              id={`${listId}-${idx}`}
               role="option"
               aria-selected={idx === active}
               ref={(el) => idx === active && el?.scrollIntoView?.({ block: 'nearest' })}
@@ -128,3 +147,6 @@ export default function Autocomplete({
     </div>
   );
 }
+
+// يعلن لـ Field أن هذا المكوّن يقبل id ويضعه على حقل الإدخال
+Autocomplete.acceptsId = true;

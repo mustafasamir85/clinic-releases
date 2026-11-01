@@ -55,10 +55,10 @@ export function useAuth() {
   const can = useCallback((permission) => Boolean(currentUser?.permissions.includes(permission)), [currentUser]);
   const firstAllowedTab = useMemo(() => TAB_ORDER.find((t) => can(t)) ?? null, [can]);
 
-  const login = useCallback(async (username, password) => {
+  const login = useCallback(async (username, password, remember = false) => {
     try {
       const { token, user } = await api.login(username, password);
-      api.setToken(token);
+      api.setToken(token, remember);
       setCurrentUser(withPermissions(user));
       return { ok: true };
     } catch (err) {

@@ -4,14 +4,15 @@ import { ChevronLeft, ChevronRight, Printer, Ear } from 'lucide-react';
 import { COLORS, smallOutlineButtonStyle } from '../../styles';
 import { formatDateDMY, getFileNumber } from '../../utils/format';
 import Modal from '../../components/common/Modal';
-import { Audiogram, FREQS, audiogramSummary } from './Audiogram';
+import { Audiogram, AudiogramLegend, FREQS, audiogramSummary } from './Audiogram';
 import { printReport } from '../../utils/printReport';
+import { guessEnglishName } from '../documents/documentUtils';
 
 const ROWS = [
-  { ear: 'right', type: 'air', label: 'اليمنى — هوائي' },
-  { ear: 'left', type: 'air', label: 'اليسرى — هوائي' },
-  { ear: 'right', type: 'bone', label: 'اليمنى — عظمي' },
-  { ear: 'left', type: 'bone', label: 'اليسرى — عظمي' },
+  { ear: 'right', type: 'air', label: 'Rt — AC' },
+  { ear: 'left', type: 'air', label: 'Lt — AC' },
+  { ear: 'right', type: 'bone', label: 'Rt — BC' },
+  { ear: 'left', type: 'bone', label: 'Lt — BC' },
 ];
 
 const cell = { padding: '6px 8px', textAlign: 'center', borderBottom: `1px solid ${COLORS.border}`, fontSize: '13px', color: COLORS.ink };
@@ -25,7 +26,7 @@ export default function AudiogramPreviewModal({ patient, visits, initialVisitId,
 
   return (
     <Modal
-      title="تخطيط السمع"
+      title="فحص السمع"
       icon={Ear}
       subtitle={<>الإسم: <strong style={{ color: COLORS.gold }}>{patient.name}</strong> ({getFileNumber(patient)}) • زيارة {formatDateDMY(visit.date)}</>}
       maxWidth={720}
@@ -42,36 +43,55 @@ export default function AudiogramPreviewModal({ patient, visits, initialVisitId,
         </button>
       </div>
 
-      <div className="audiogram-print-page">
+      <div className="audiogram-print-page" dir="ltr">
         <div className="print-only audiogram-print-header">
           <PrintHeader bare />
-          <strong className="audiogram-print-title">تخطيط السمع</strong>
-          <span>الأسم: {patient.name} • رقم الملف: {getFileNumber(patient)} • تاريخ الزيارة: {formatDateDMY(visit.date)}</span>
+          <strong className="audiogram-print-title">Hearing Test (Audiogram)</strong>
+          <span>Name: {guessEnglishName(patient) || patient.name} • File No.: {getFileNumber(patient)} • Visit Date: {formatDateDMY(visit.date)}</span>
         </div>
 
         <Audiogram value={visit.audiogram} />
+        <AudiogramLegend/>
 
-        {summary && <p className="audiogram-print-summary" style={{ margin: '12px 0 0 0', fontWeight: '700', fontSize: '13.5px', color: COLORS.ink }}>{summary}</p>}
+        {summary && (
+          <div className="audiogram-print-summary audiogram-result audiogram-result--primary">
+            <div dir='ltr' style={{textAlign:'left'}}><u>Result:</u></div>
+            {summary}
+          </div>
+        )}
 
-        <div className="audiogram-print-values" style={{ overflowX: 'auto', marginTop: '14px', border: `1px solid ${COLORS.border}`, borderRadius: '12px' }}>
+        <div dir="ltr" className="audiogram-print-values" style={{ overflowX: 'auto', marginTop: '14px', border: `1px solid ${COLORS.border}`, borderRadius: '12px' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', background: COLORS.card }}>
             <thead>
               <tr style={{ background: COLORS.soft }}>
-                <th style={{ ...cell, textAlign: 'right', fontWeight: '800' }}>التوصيل</th>
+                <th style={{ ...cell, textAlign: 'left', fontWeight: '800' }}>Frequency</th>
                 {FREQS.map((f) => <th key={f} style={{ ...cell, fontWeight: '800' }}>{f} Hz</th>)}
               </tr>
             </thead>
             <tbody>
               {ROWS.map((r) => (
                 <tr key={`${r.ear}-${r.type}`}>
-                  <td style={{ ...cell, textAlign: 'right', fontWeight: '700' }}>{r.label}</td>
-                  {FREQS.map((f) => <td key={f} style={cell}>{visit.audiogram?.[r.ear]?.[r.type]?.[f] ?? '—'}</td>)}
+                  <td style={{ ...cell, textAlign: 'left', fontWeight: '700' }}>{r.label}</td>
+                  {FREQS.map((f) => {
+                    const v = visit.audiogram?.[r.ear]?.[r.type]?.[f];
+                    const m = visit.audiogram?.[r.ear]?.masked?.[r.type]?.[f];
+                    return <td key={f} style={cell}>{v ?? '—'}{v != null && m && <sup style={{ fontWeight: '800', marginRight: '2px' }}>M</sup>}</td>;
+                  })}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <p className="audiogram-print-unit" style={{ margin: '8px 0 0 0', fontSize: '11px', color: COLORS.faint }}>القيم بوحدة dB HL.</p>
+        <p className="audiogram-print-unit" style={{ margin: '8px 0 0 0', fontSize: '11px', color: COLORS.faint }}>Values are in dB HL. (M) = Masked.</p>
+      <div className='print-leave-signature' style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', direction: 'ltr', marginTop: '40px', fontSize: '14px', width: '100%' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div>Signature</div>
+            <div style={{ borderTop: '1px solid #111', width: '180px', marginTop: '4px' }} />
+          </div>
+          <div style={{ textAlign: 'center', alignSelf: 'flex-end', color: '#777' }}>
+            <div style={{ border: '1px dashed #999', width: '110px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>Official Stamp</div>
+          </div>
+        </div>
       </div>
     </Modal>
   );

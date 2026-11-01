@@ -52,12 +52,12 @@ export default function InsuranceClaimModal({ data, from, to, onClose }) {
         <PrintHeader>
           <div>مطالبة مالية — {data.company}</div>
           <div style={{ color: '#444' }}>
-            {periodText(from, to)} • تاريخ الإصدار: {formatDateDMY(getToday())} • عدد المرضى: {data.groups.length} • عدد الفواتير: {data.invoiceCount}
+            {periodText(from, to)} • تاريخ الإصدار: {formatDateDMY(getToday())} • عدد المرضى: {data.groups.length} • عدد المطالبات: {data.invoiceCount}
           </div>
         </PrintHeader>
 
         {data.invoiceCount === 0 ? (
-          <p style={{ textAlign: 'center', color: '#666', margin: '24px 0' }}>لا توجد فواتير لهذه الشركة في الفترة المختارة.</p>
+          <p style={{ textAlign: 'center', color: '#666', margin: '24px 0' }}>لا توجد مطالبات لهذه الشركة في الفترة المختارة.</p>
         ) : (
           data.groups.map((g, idx) => (
             <section key={g.key} style={{ marginBottom: '18px', breakInside: 'avoid' }}>
@@ -99,7 +99,7 @@ export default function InsuranceClaimModal({ data, from, to, onClose }) {
                       </tr>
                     ))}
                     <tr style={{ background: '#f4f4f4' }}>
-                      <td colSpan={4} style={{ ...cell, fontWeight: '800' }}>إجمالي المريض ({g.rows.length} {g.rows.length === 1 ? 'فاتورة' : 'فواتير'})</td>
+                      <td colSpan={4} style={{ ...cell, fontWeight: '800' }}>إجمالي المريض ({g.rows.length} {g.rows.length === 1 ? 'مطالبة' : 'مطالبات'})</td>
                       <td style={{ ...num, fontWeight: '800' }}>{formatMoney(g.total)}</td>
                       <td style={{ ...num, fontWeight: '800' }}>{formatMoney(g.share)}</td>
                       <td style={{ ...num, fontWeight: '800' }}>{formatMoney(g.patientShare)}</td>
@@ -114,7 +114,7 @@ export default function InsuranceClaimModal({ data, from, to, onClose }) {
         {data.invoiceCount > 0 && (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px 20px', background: '#e9e9e9', border: '1px solid #cfcfcf', borderRadius: '6px', padding: '10px 14px', fontWeight: '800', fontSize: '14px', breakInside: 'avoid' }}>
-              <span>إجمالي الفواتير: {formatMoney(data.total)}</span>
+              <span>إجمالي المطالبات: {formatMoney(data.total)}</span>
               <span>حصة المرضى: {formatMoney(data.patientShare)}</span>
               <span>المبلغ المطلوب من {data.company}: {formatMoney(data.share)}</span>
             </div>

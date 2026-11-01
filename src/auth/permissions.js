@@ -9,6 +9,8 @@ export const ACTIONS = {
   RETURN_SALES: 'sales.return', // مرتجع بيع المستلزمات (إرجاع أصناف إلى المخزون واسترداد قيمتها)
   ISSUE_DOCUMENTS: 'documents.issue', // إصدار التقارير الطبية والإجازات المرضية
   DELETE_DOCUMENTS: 'documents.delete', // حذف التقارير الطبية والإجازات المرضية
+  EDIT_PURCHASES: 'purchases.edit', // تعديل فواتير الشراء المسجَّلة
+  DELETE_PURCHASES: 'purchases.delete', // حذف فواتير الشراء (يُعكَس أثرها على المخزون)
   // أقسام شاشة التقارير (شاشة التقارير تفتح الصفحة، وهذه تحدد ما يظهر فيها)
   REPORTS_ACCOUNTING: 'reports.accounting', // التقارير المحاسبية
   REPORTS_ADMIN: 'reports.admin', // التقارير الإدارية (ومنها قائمة المرضى)
@@ -35,7 +37,8 @@ export const PERMISSION_GROUPS = [
       { id: TABS.BILLING, label: 'الفواتير والحسابات' },
       { id: TABS.REPORTS, label: 'التقارير' },
       { id: TABS.USERS, label: 'إدارة المستخدمين والصلاحيات' },
-      // النسخ الاحتياطي وتحديث البرنامج لمدير النظام فقط: ليسا صلاحيتين تُمنحان (يفرضه الخادم أيضاً)
+      { id: TABS.UPDATES, label: 'تحديث التطبيق' },
+      // النسخ الاحتياطي لمدير النظام فقط: ليس صلاحية تُمنح (يفرضه الخادم أيضاً)
     ],
   },
   {
@@ -48,6 +51,8 @@ export const PERMISSION_GROUPS = [
       { id: ACTIONS.RETURN_SALES, label: 'مرتجع بيع المستلزمات' },
       { id: ACTIONS.ISSUE_DOCUMENTS, label: 'إصدار التقارير الطبية والإجازات المرضية' },
       { id: ACTIONS.DELETE_DOCUMENTS, label: 'حذف التقارير الطبية والإجازات المرضية' },
+      { id: ACTIONS.EDIT_PURCHASES, label: 'تعديل فواتير الشراء' },
+      { id: ACTIONS.DELETE_PURCHASES, label: 'حذف فواتير الشراء' },
     ],
   },
   {
@@ -76,6 +81,10 @@ export const ROLES = {
   doctor: {
     label: 'طبيب / أخصائي',
     permissions: [TABS.PATIENTS, TABS.ENT, TABS.AUDIO, TABS.SPEECH, TABS.SCHEDULE, ACTIONS.MANAGE_VISITS, ACTIONS.ISSUE_DOCUMENTS, ACTIONS.DELETE_DOCUMENTS],
+  },
+  speech_therapist: {
+    label: 'فني تخاطب ونطق',
+    permissions: [TABS.PATIENTS, TABS.SPEECH, TABS.SCHEDULE, ACTIONS.MANAGE_VISITS, ACTIONS.ISSUE_DOCUMENTS],
   },
   reception: {
     label: 'استقبال',

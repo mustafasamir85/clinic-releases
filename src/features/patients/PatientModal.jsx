@@ -11,8 +11,19 @@ import { AudiogramEditor, EMPTY_AUDIOGRAM, audiogramSummary, hasAudiogram } from
 
 const EMPTY_FORM = { name: '', birthDate: '', gender: '', phone: '', email: '', address: '' };
 
-export default function PatientModal({ insuranceCompanies, onSubmit, onClose }) {
-  const [form, setForm] = useState(EMPTY_FORM);
+// patient (اختياري): وضع التعديل. يعدّل البيانات الشخصية فقط؛ التأمين والتخطيط السابق يُديران من ملف المريض.
+const formFromPatient = (p) => ({
+  name: p.name ?? '',
+  birthDate: p.birth_date ?? '',
+  gender: p.gender ?? '',
+  phone: p.phone ?? '',
+  email: p.email ?? '',
+  address: p.address ?? '',
+});
+
+export default function PatientModal({ patient, insuranceCompanies, onSubmit, onClose }) {
+  const editing = Boolean(patient);
+  const [form, setForm] = useState(() => (patient ? formFromPatient(patient) : EMPTY_FORM));
   const [insurance, setInsurance] = useState(NO_INSURANCE);
   const [submitting, setSubmitting] = useState(false);
   // تخطيط سمع سابق (اختياري): يُحفظ كزيارة سمعيات بتاريخه
@@ -27,7 +38,7 @@ export default function PatientModal({ insuranceCompanies, onSubmit, onClose }) 
     if (submitting) return;
 
     let previousAudiogram = null;
-    if (showAudiogram) {
+    if (!editing && showAudiogram) {
       if (!hasAudiogram(audiogram)) {
         setError('أدخل قيمة واحدة على الأقل في التخطيط السابق، أو أغلق هذا القسم.');
         return;
@@ -42,17 +53,17 @@ export default function PatientModal({ insuranceCompanies, onSubmit, onClose }) 
     setError('');
     setSubmitting(true);
     try {
-      await onSubmit({ ...form, insurance, previousAudiogram });
+      await onSubmit(editing ? form : { ...form, insurance, previousAudiogram });
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <Modal
-      title="تسجيل مريض جديد"
+    <Modal warnUnsaved
+      title={editing ? 'تعديل بيانات المريض' : 'تسجيل مريض جديد'}
       subtitle={<>الحقول المعلمة بـ (<span style={{ color: COLORS.danger }}>*</span>) إجبارية</>}
-      maxWidth={showAudiogram ? 780 : 520}
+      maxWidth={!editing && showAudiogram ? 780 : 520}
       onClose={onClose}
     >
       <form onSubmit={handleSubmit}>
@@ -81,7 +92,7 @@ export default function PatientModal({ insuranceCompanies, onSubmit, onClose }) 
 
         <div style={twoColumns}>
           <Field label="رقم الهاتف" required>
-            <input type="text" value={form.phone} onChange={setField('phone')} onKeyDown={handleEnterAsTab} className="warm-input" placeholder="07xxxxxxxx" required dir="ltr" style={{ textAlign: 'right' }} />
+            <input type="text" inputMode="tel" value={form.phone} onChange={setField('phone')} onKeyDown={handleEnterAsTab} className="warm-input" placeholder="07xxxxxxxx" required dir="ltr" style={{ textAlign: 'right' }} />
           </Field>
           <Field label="البريد الإلكتروني" optional>
             <input type="email" value={form.email} onChange={setField('email')} onKeyDown={handleEnterAsTab} className="warm-input" placeholder="patient@example.com" />
@@ -92,9 +103,9 @@ export default function PatientModal({ insuranceCompanies, onSubmit, onClose }) 
           <input type="text" value={form.address} onChange={setField('address')} onKeyDown={handleEnterAsTab} className="warm-input" placeholder="المدينة، الشارع، البناية..." required />
         </Field>
 
-        <InsuranceSelector companies={insuranceCompanies} value={insurance} onChange={setInsurance} />
+        {!editing && <InsuranceSelector companies={insuranceCompanies} value={insurance} onChange={setInsurance} />}
 
-        {!showAudiogram ? (
+        {editing ? null : !showAudiogram ? (
           <button type="button" onClick={() => setShowAudiogram(true)} style={{ ...outlineGoldButtonStyle, marginTop: '14px' }}>
             <Ear size={15} color={COLORS.gold} /> إدخال تخطيط سمع سابق
           </button>
@@ -154,7 +165,7 @@ export default function PatientModal({ insuranceCompanies, onSubmit, onClose }) 
           </div>
         )}
 
-        <FormActions onCancel={onClose} submitLabel="إنشاء الملف وحفظه" disabled={submitting} />
+        <FormActions onCancel={onClose} submitLabel={editing ? 'حفظ التعديلات' : 'إنشاء الملف وحفظه'} disabled={submitting} />
       </form>
     </Modal>
   );

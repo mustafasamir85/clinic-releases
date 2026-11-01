@@ -8,7 +8,7 @@ const ACTIVE = [ST.BOOKED, ST.ARRIVED];
 
 // إدارة المواعيد: الحجز والتعديل وتغيير الحالة والحذف
 export function useAppointments(enabled) {
-  const [items, setItems] = useSyncedState('appointments', INITIAL_APPOINTMENTS, enabled);
+  const [items, setItems, { loading }] = useSyncedState('appointments', INITIAL_APPOINTMENTS, enabled);
 
   // يمنع تكرار حجز المريض في القسم نفسه باليوم، كما يمنع تعارض الوقت في القسم أو للمريض.
   const findConflict = useCallback(
@@ -56,5 +56,5 @@ export function useAppointments(enabled) {
     });
   }, [setItems]);
 
-  return { items, findConflict, book, update, setStatus, remove, completeFor };
+  return { loading, items, findConflict, book, update, setStatus, remove, completeFor };
 }

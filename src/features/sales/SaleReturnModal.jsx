@@ -36,7 +36,7 @@ export default function SaleReturnModal({ invoice, supplies, onSubmit, onClose }
   };
 
   return (
-    <Modal title={`مرتجع مبيعات — ${invoice.inv_no}`} icon={Undo2} subtitle={`العميل: ${invoice.patient_name}`} maxWidth={620} onClose={onClose}>
+    <Modal warnUnsaved title={`مرتجع مبيعات — ${invoice.inv_no}`} icon={Undo2} subtitle={`العميل: ${invoice.patient_name}`} maxWidth={620} onClose={onClose}>
       <form onSubmit={handleSubmit}>
         <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: '12px', overflow: 'hidden', marginBottom: '14px' }}>
           {lines.map((l) => (

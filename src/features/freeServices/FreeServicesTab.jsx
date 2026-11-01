@@ -19,7 +19,7 @@ function FreeServiceModal({ item, onSave, onClose }) {
   };
 
   return (
-    <Modal title={item ? 'تعديل الخدمة المجانية' : 'إضافة خدمة مجانية جديدة'} icon={Gift} maxWidth={460} onClose={onClose}>
+    <Modal warnUnsaved title={item ? 'تعديل الخدمة المجانية' : 'إضافة خدمة مجانية جديدة'} icon={Gift} maxWidth={460} onClose={onClose}>
       <form onSubmit={handleSubmit}>
         <Field label="اسم الخدمة المجانية" required>
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="warm-input" placeholder="مثال: فحص سمع أولي..." required autoFocus />

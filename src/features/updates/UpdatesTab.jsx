@@ -4,11 +4,13 @@ import * as api from '../../api';
 import { COLORS, outlineGoldButtonStyle } from '../../styles';
 import { CollapsibleSection, Panel, SectionHeader, TabCard } from '../../components/common/layout';
 import StatusBadge from '../../components/common/StatusBadge';
+import { useConfirm } from '../../components/common/ConfirmDialog';
 
 const box = { background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: '14px', padding: '16px', marginBottom: '16px' };
 
 // شاشة المدير: الإصدار الحالي، فحص الجديد، تثبيته بضغطة، والرجوع للنسخة السابقة
 export default function UpdatesTab({ onNotify }) {
+  const confirm = useConfirm();
   const [status, setStatus] = useState(null);
   const [busy, setBusy] = useState(''); // '' | check | apply | rollback
   const [error, setError] = useState('');
@@ -27,7 +29,7 @@ export default function UpdatesTab({ onNotify }) {
   }, [load]);
 
   const run = async (kind, fn, confirmText, doneText, reload) => {
-    if (confirmText && !window.confirm(confirmText)) return;
+    if (confirmText && !(await confirm({ title: 'تأكيد', message: confirmText, confirmLabel: 'متابعة' }))) return;
     setBusy(kind);
     setError('');
     try {

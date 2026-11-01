@@ -25,7 +25,7 @@ function InsuranceModal({ item, onSave, onClose }) {
   };
 
   return (
-    <Modal title={item ? 'تعديل شركة التأمين' : 'إضافة شركة تأمين جديدة'} icon={Shield} maxWidth={460} onClose={onClose}>
+    <Modal warnUnsaved title={item ? 'تعديل شركة التأمين' : 'إضافة شركة تأمين جديدة'} icon={Shield} maxWidth={460} onClose={onClose}>
       <form onSubmit={handleSubmit}>
         <Field label="اسم شركة التأمين" required>
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="warm-input" placeholder="مثال: شركة التأمين الوطنية..." required autoFocus />

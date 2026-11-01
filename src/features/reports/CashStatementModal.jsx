@@ -5,6 +5,7 @@ import { formatDateDMY, formatMoney, getToday } from '../../utils/format';
 import { downloadCsv } from '../../utils/csv';
 import { printReport } from '../../utils/printReport';
 import Modal from '../../components/common/Modal';
+import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS, paymentMethodLabel } from '../../constants';
 
 // الورقة بيضاء وبحبر داكن دائماً (حتى في الوضع الداكن) لأنها كشف للطباعة
 const paper = { background: '#fff', color: '#111', border: '1px solid #cfcfcf', borderRadius: '6px', padding: '28px 32px', fontSize: '13px', lineHeight: 1.7 };
@@ -12,7 +13,12 @@ const paper = { background: '#fff', color: '#111', border: '1px solid #cfcfcf', 
 const cell = { padding: '6px 10px', textAlign: 'right', verticalAlign: 'top', borderBottom: '1px solid #e0e0e0' };
 const nowrap = { whiteSpace: 'nowrap' };
 // عرض كل عمود (نسبة مئوية): يثبّت الجدول على الشاشة والطباعة فلا يتحرك عرض الأعمدة حسب المحتوى
-const COLUMN_WIDTHS = ['11%', '17%', '38%', '10%', '8%', '8%', '8%'];
+const COLUMN_WIDTHS = ['10%', '15%', '28%', '9%', '7%', '8%', '9%', '14%'];
+const COLS = COLUMN_WIDTHS.length;
+
+// سطر ملخّص: مجموع كل طريقة دفع (نقدي / بطاقات) مفصولة بنقطة
+const methodSummary = (byMethod) =>
+  Object.values(PAYMENT_METHODS).map((m) => `${PAYMENT_METHOD_LABELS[m]}: ${formatMoney(byMethod[m] ?? 0)}`).join('  •  ');
 
 const weekday = (date) => new Date(`${date}T00:00:00`).toLocaleDateString('ar', { weekday: 'long' });
 const periodText = (from, to) => (!from && !to ? 'كل الفترات' : `من ${from ? formatDateDMY(from) : 'البداية'} إلى ${to ? formatDateDMY(to) : 'اليوم'}`);
@@ -22,12 +28,12 @@ export default function CashStatementModal({ data, from, to, userLabel, onClose 
   const exportCsv = () =>
     downloadCsv(
       `cash-statement-${getToday()}.csv`,
-      ['التاريخ', 'رقم الفاتورة', 'المريض', 'الخدمة', 'شركة التأمين', 'تحمّل المريض', 'المستلم', 'المبلغ المقبوض'],
-      data.days.flatMap((d) => d.rows.map((r) => [d.date, r.invNo, r.patient, r.service, r.insuranceCompany, r.copayAmount ?? '', r.user, r.amount]))
+      ['التاريخ', 'رقم الفاتورة', 'المريض', 'الخدمة', 'شركة التأمين', 'تحمّل المريض', 'المستلم', 'طريقة الدفع', 'المبلغ المقبوض'],
+      data.days.flatMap((d) => d.rows.map((r) => [d.date, r.invNo, r.patient, r.service, r.insuranceCompany, r.copayAmount ?? '', r.user, paymentMethodLabel(r.method), r.amount]))
     );
 
   return (
-    <Modal title="الكشف النقدي — الدخل اليومي" icon={Wallet} subtitle={`${periodText(from, to)}${userLabel ? ` • المستخدم: ${userLabel}` : ''}`} maxWidth={1600} onClose={onClose}>
+    <Modal title="كشف الإيراد اليومي" icon={Wallet} subtitle={`${periodText(from, to)}${userLabel ? ` • المستخدم: ${userLabel}` : ''}`} maxWidth={1600} onClose={onClose}>
       <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap', marginBottom: '12px' }}>
         <button type="button" onClick={exportCsv} disabled={data.count === 0} style={outlineGoldButtonStyle}>
           <Download size={14} color={COLORS.gold} /> تصدير CSV
@@ -59,13 +65,14 @@ export default function CashStatementModal({ data, from, to, userLabel, onClose 
                 <th style={cell}>شركة التأمين</th>
                 <th style={{...cell, textAlign: 'center'}}>تحمّل المريض</th>
                 <th style={cell}>المستلم</th>
+                <th style={{ ...cell, textAlign: 'center' }}>طريقة الدفع</th>
                 <th style={{ ...cell, textAlign: 'left' }}>المبلغ المقبوض</th>
               </tr>
             </thead>
             {data.days.map((day) => (
               <tbody key={day.date} style={{ breakInside: 'avoid' }}>
                 <tr style={{ background: '#f4f4f4' }}>
-                  <td colSpan={7} style={{ ...cell, fontWeight: '800' }}>
+                  <td colSpan={COLS} style={{ ...cell, fontWeight: '800' }}>
                     {weekday(day.date)} — {formatDateDMY(day.date)}
                   </td>
                 </tr>
@@ -77,6 +84,7 @@ export default function CashStatementModal({ data, from, to, userLabel, onClose 
                     <td style={cell}>{r.insuranceCompany || '—'}</td>
                     <td style={{ ...cell, ...nowrap, textAlign: 'center' }}>{r.copayAmount == null ? '—' : r.copayAmount}</td>
                     <td style={cell}>{r.user || '—'}</td>
+                    <td style={{ ...cell, ...nowrap, textAlign: 'center' }}>{paymentMethodLabel(r.method)}</td>
                     <td style={{ ...cell, ...nowrap, textAlign: 'left' }}>
                       {formatMoney(r.amount)}
                       {r.legacy && ' *'}
@@ -84,8 +92,9 @@ export default function CashStatementModal({ data, from, to, userLabel, onClose 
                   </tr>
                 ))}
                 <tr>
-                  <td colSpan={6} style={{ ...cell, fontWeight: '800' }}>
+                  <td colSpan={COLS - 1} style={{ ...cell, fontWeight: '800' }}>
                     إجمالي اليوم ({day.rows.length} {day.rows.length === 1 ? 'دفعة' : 'دفعات'})
+                    <span style={{ fontWeight: '600', color: '#444', marginRight: '12px' }}>{methodSummary(day.byMethod)}</span>
                   </td>
                   <td style={{ ...cell, ...nowrap, textAlign: 'left', fontWeight: '800' }}>{formatMoney(day.total)}</td>
                 </tr>
@@ -93,8 +102,9 @@ export default function CashStatementModal({ data, from, to, userLabel, onClose 
             ))}
             <tfoot>
               <tr style={{ background: '#e9e9e9' }}>
-                <td colSpan={6} style={{ ...cell, fontWeight: '800', fontSize: '14px' }}>
-                  إجمالي الدخل النقدي ({data.days.length} {data.days.length === 1 ? 'يوم' : 'أيام'} • {data.count} دفعة)
+                <td colSpan={COLS - 1} style={{ ...cell, fontWeight: '800', fontSize: '14px' }}>
+                  إجمالي الدخل ({data.days.length} {data.days.length === 1 ? 'يوم' : 'أيام'} • {data.count} دفعة)
+                  <div style={{ fontWeight: '700', fontSize: '13px', color: '#222', marginTop: '2px' }}>{methodSummary(data.byMethod)}</div>
                 </td>
                 <td style={{ ...cell, ...nowrap, textAlign: 'left', fontWeight: '800', fontSize: '14px' }}>{formatMoney(data.total)}</td>
               </tr>

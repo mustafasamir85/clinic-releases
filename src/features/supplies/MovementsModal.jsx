@@ -5,7 +5,7 @@ import { formatDateDMY, formatUser } from '../../utils/format';
 import Modal from '../../components/common/Modal';
 import StatusBadge from '../../components/common/StatusBadge';
 
-const TONE = { purchase: 'success', adjustment: 'warning', usage: 'neutral', return: 'success', sale: 'neutral', receipt: 'success', removal: 'danger' };
+const TONE = { purchase: 'success', purchase_edit: 'warning', purchase_delete: 'danger', adjustment: 'warning', usage: 'neutral', return: 'success', sale: 'neutral', receipt: 'success', removal: 'danger' };
 
 // سجل حركة المخزون: الشراء والجرد والاستهلاك والبيع وإدخال السماعات (الأحدث أولاً)
 export default function MovementsModal({ movements, onClose }) {

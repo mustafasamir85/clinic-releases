@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { PrintHeader } from '../../components/common/PrintBrand';
-import { BarChart3, Download, Eye, FileText, Printer, Wallet } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, BarChart3, Download, Eye, FileText, Printer, RotateCcw, Wallet } from 'lucide-react';
 import { COLORS, outlineGoldButtonStyle } from '../../styles';
 import { formatDateDMY, formatMoney, formatUser, getToday } from '../../utils/format';
 import ItemStatementModal from '../supplies/ItemStatementModal';
@@ -13,6 +13,8 @@ import { ACTIONS } from '../../auth/permissions';
 import CashStatementModal from './CashStatementModal';
 import InsuranceClaimModal from './InsuranceClaimModal';
 import Modal from '../../components/common/Modal';
+import { sortKey, sortRows } from '../../utils/sort';
+import { usePersistedState } from '../../hooks/usePersistedState';
 
 // ===== الفترة الزمنية =====
 const daysAgo = (n) => {
@@ -45,16 +47,28 @@ const KpiGrid = ({ children }) => (
 const cellStyle = { padding: '10px 12px', textAlign: 'right', borderBottom: `1px solid ${COLORS.border}`, fontSize: '13px' };
 
 // جدول تقرير مع زر تصدير CSV. columns: [{ label, get(row) }]
-function ReportTable({ title, columns, rows, filename, printNote = '' }) {
+function ReportTable({ title, columns, rows, filename, printNote = '', previewOnly = false }) {
   const rootRef = useRef(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [tableCollapsed, setTableCollapsed] = useState(false);
+  const [sort, setSort] = useState({ label: null, dir: 1 }); // الفرز بالضغط على عنوان العمود
   const exportable = columns.filter((c) => !c.noExport); // أعمدة الأزرار لا تُصدَّر
+
+  // القيمة المستعملة للفرز: sortValue إن وُجدت، ثم النص الخام (text)، ثم ما يُعرض (get)
+  const sortAccessor = (c) => c.sortValue ?? c.text ?? c.get;
+  // العمود قابل للفرز إذا كانت قيمه نصاً/رقماً (لا أزرار ولا عناصر React)
+  const isSortable = (c) => !c.noExport && rows.length > 1 && rows.some((r) => sortKey(sortAccessor(c)(r)) !== null);
+  const activeColumn = columns.find((c) => c.label === sort.label && isSortable(c));
+  const viewRows = useMemo(() => (activeColumn ? sortRows(rows, sortAccessor(activeColumn), sort.dir) : rows), [rows, activeColumn, sort.dir]); // eslint-disable-line react-hooks/exhaustive-deps
+  // ضغطات متتالية: تصاعدي ← تنازلي ← الترتيب الأصلي
+  const toggleSort = (label) =>
+    setSort((cur) => (cur.label !== label ? { label, dir: 1 } : cur.dir === 1 ? { label, dir: -1 } : { label: null, dir: 1 }));
+
   const exportCsv = () =>
     downloadCsv(
       `${filename}.csv`,
       exportable.map((c) => c.label),
-      rows.map((r) => exportable.map((c) => c.text?.(r) ?? c.get(r)))
+      viewRows.map((r) => exportable.map((c) => c.text?.(r) ?? c.get(r)))
     );
   const reportTitle = printNote ? `${title} — ${printNote}` : title;
   const renderTable = () => rows.length === 0 ? (
@@ -64,13 +78,32 @@ function ReportTable({ title, columns, rows, filename, printNote = '' }) {
       <table style={{ width: '100%', borderCollapse: 'collapse', background: COLORS.card }}>
         <thead>
           <tr style={{ background: COLORS.soft }}>
-            {columns.map((c) => (
-              <th key={c.label} style={{ ...cellStyle, color: COLORS.text, fontWeight: '800' }}>{c.label}</th>
-            ))}
+            {columns.map((c) => {
+              const sortable = isSortable(c);
+              const active = activeColumn === c;
+              return (
+                <th
+                  key={c.label}
+                  style={{ ...cellStyle, color: COLORS.text, fontWeight: '800' }}
+                  aria-sort={active ? (sort.dir === 1 ? 'ascending' : 'descending') : sortable ? 'none' : undefined}
+                >
+                  {sortable ? (
+                    <button type="button" className="th-sort" onClick={() => toggleSort(c.label)} title="اضغط للفرز">
+                      {c.label}
+                      <span className="no-print th-sort-icon" aria-hidden="true">
+                        {active ? (sort.dir === 1 ? <ArrowUp size={13} /> : <ArrowDown size={13} />) : <ArrowUpDown size={13} />}
+                      </span>
+                    </button>
+                  ) : (
+                    c.label
+                  )}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => (
+          {viewRows.map((r, i) => (
             <tr key={i}>
               {columns.map((c) => (
                 <td key={c.label} style={{ ...cellStyle, color: COLORS.ink }}>{c.get(r)}</td>
@@ -87,7 +120,7 @@ function ReportTable({ title, columns, rows, filename, printNote = '' }) {
     <section ref={rootRef} className="report-table-card">
       <div className="report-table-heading">
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <CollapseChevron open={!tableCollapsed} onClick={() => setTableCollapsed((c) => !c)} label={tableCollapsed ? 'فتح الجدول' : 'طي الجدول'} />
+          {!previewOnly && <CollapseChevron open={!tableCollapsed} onClick={() => setTableCollapsed((c) => !c)} label={tableCollapsed ? 'فتح الجدول' : 'طي الجدول'} />}
           <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>{title}</h4>
         </div>
         <div className="report-table-actions">
@@ -102,7 +135,7 @@ function ReportTable({ title, columns, rows, filename, printNote = '' }) {
           </button>
         </div>
       </div>
-      <div className="section-collapse-body" hidden={tableCollapsed}>{renderTable()}</div>
+      <div className="section-collapse-body" hidden={previewOnly || tableCollapsed}>{renderTable()}</div>
     </section>
     {previewOpen && (
       <Modal title="" subtitle={reportTitle} maxWidth={1100} onClose={() => setPreviewOpen(false)}>
@@ -149,8 +182,8 @@ function AccountingView({ data, free, onClaim, companies }) {
   return (
     <>
       <KpiGrid>
-        <Kpi label="عدد الفواتير" value={k.count} />
-        <Kpi label="إجمالي الفواتير" value={formatMoney(k.billed)} />
+        <Kpi label="عدد المطالبات" value={k.count} />
+        <Kpi label="إجمالي المطالبات" value={formatMoney(k.billed)} />
         <Kpi label="حصة شركات التأمين (مستحقة لنا)" value={formatMoney(k.insuranceShare)} tone={COLORS.link} />
         <Kpi label="حصة المرضى" value={formatMoney(k.patientShare)} />
         <Kpi label="المحصّل من المرضى" value={formatMoney(k.collected)} tone={COLORS.successText} />
@@ -164,7 +197,7 @@ function AccountingView({ data, free, onClaim, companies }) {
         <CompareBars
           title="ملخص مالي للفترة"
           items={[
-            { label: 'إجمالي الفواتير', value: k.billed, color: 'var(--c-accent)' },
+            { label: 'إجمالي المطالبات', value: k.billed, color: 'var(--c-accent)' },
             { label: 'المحصّل', value: k.collected, color: 'var(--c-success-text)' },
             { label: 'الذمم', value: k.outstanding, color: 'var(--c-danger)' },
             { label: 'المشتريات', value: k.expenses, color: 'var(--c-warn-text)' },
@@ -172,17 +205,17 @@ function AccountingView({ data, free, onClaim, companies }) {
           ]}
         />
         <ShareDonut
-          title="توزيع قيمة الفواتير"
+          title="توزيع قيمة المطالبات"
           slices={[
             { label: 'حصة المرضى', value: k.patientShare, color: 'var(--c-accent)' },
             { label: 'حصة التأمين', value: k.insuranceShare, color: 'var(--c-link)' },
           ]}
         />
         <TrendLines
-          title="الفواتير والتحصيل والمشتريات عبر الفترة"
+          title="المطالبات والتحصيل والمشتريات عبر الفترة"
           points={data.byPeriod}
           series={[
-            { key: 'billed', label: 'إجمالي الفواتير (د.أ)', color: 'var(--c-accent)' },
+            { key: 'billed', label: 'إجمالي المطالبات (د.أ)', color: 'var(--c-accent)' },
             { key: 'collected', label: 'المحصّل (د.أ)', color: 'var(--c-success-text)' },
             { key: 'expenses', label: 'المشتريات (د.أ)', color: 'var(--c-warn-text)' },
           ]}
@@ -226,8 +259,8 @@ function AccountingView({ data, free, onClaim, companies }) {
         rows={data.byInsurance}
         columns={[
           { label: 'شركة التأمين', get: (r) => r.key },
-          { label: 'عدد الفواتير', get: (r) => r.count },
-          { label: 'إجمالي الفواتير', get: (r) => formatMoney(r.total), text: (r) => r.total },
+          { label: 'عدد المطالبات', get: (r) => r.count },
+          { label: 'إجمالي المطالبات', get: (r) => formatMoney(r.total), text: (r) => r.total },
           { label: 'المطلوب من الشركة', get: (r) => formatMoney(r.share), text: (r) => r.share },
           {
             label: 'المطالبة',
@@ -470,6 +503,7 @@ function AdminView({ data, free, registry }) {
 
       <ReportTable
         title={`قائمة المرضى الحاليين (${registry.count} مريض)`}
+        previewOnly
         filename="patients-list"
         rows={registry.rows}
         columns={[
@@ -541,7 +575,7 @@ function AdminView({ data, free, registry }) {
         rows={data.bySupplier}
         columns={[
           { label: 'المورد', get: (r) => r.key },
-          { label: 'عدد الفواتير', get: (r) => r.count },
+          { label: 'عدد المطالبات', get: (r) => r.count },
           { label: 'الإجمالي', get: (r) => formatMoney(r.total), text: (r) => r.total },
         ]}
       />
@@ -550,16 +584,26 @@ function AdminView({ data, free, registry }) {
 }
 
 // ===== الشاشة الرئيسية =====
-export default function ReportsTab({ invoices, patients, purchases, supplies, movements = [], hearingAids = [], insuranceCompanies = [], can = () => true }) {
+// prefsUser: اسم المستخدم لحفظ آخر عرض وفترة ومستخدم اختارها في التقارير
+const DATE = /^(\d{4}-\d{2}-\d{2})?$/;
+const validatePref = (key, value) =>
+  key === 'preset' ? value in PRESETS : key === 'view' ? value === 'accounting' || value === 'admin' : key === 'from' || key === 'to' ? DATE.test(value) : true;
+const PREF_DEFAULTS = { view: 'accounting', preset: 'today', from: '', to: '', userId: '' };
+
+export default function ReportsTab({ invoices, patients, purchases, supplies, movements = [], hearingAids = [], insuranceCompanies = [], can = () => true, prefsUser }) {
   // ما يظهر داخل التقارير يتبع صلاحيات الأقسام (والمدير يملكها كلها)
   const canAccounting = can(ACTIONS.REPORTS_ACCOUNTING);
   const canAdmin = can(ACTIONS.REPORTS_ADMIN);
   const canCash = can(ACTIONS.REPORTS_CASH);
   const canClaims = can(ACTIONS.REPORTS_CLAIMS);
-  const [requestedView, setView] = useState('accounting');
+  const [prefs, setPrefs] = usePersistedState(prefsUser ? `${prefsUser}:reports` : null, PREF_DEFAULTS, validatePref);
+  const requestedView = prefs.view;
+  const setView = (value) => setPrefs({ view: value });
   const view = requestedView === 'accounting' ? (canAccounting ? 'accounting' : canAdmin ? 'admin' : null) : canAdmin ? 'admin' : canAccounting ? 'accounting' : null;
-  const [preset, setPreset] = useState('today'); // الافتراضي: تقارير اليوم، ويمكن تغييره من القائمة
-  const [custom, setCustom] = useState({ from: '', to: '' });
+  const preset = prefs.preset; // الافتراضي: تقارير اليوم، ويمكن تغييره من القائمة (ويُحفظ آخر اختيار)
+  const setPreset = (value) => setPrefs({ preset: value });
+  const custom = { from: prefs.from, to: prefs.to };
+  const setCustom = (next) => setPrefs(typeof next === 'function' ? next(custom) : next);
   const [cashOpen, setCashOpen] = useState(false);
   const [statementOpen, setStatementOpen] = useState(false);
   const [claimCompany, setClaimCompany] = useState(null); // اسم الشركة المفتوحة مطالبتها
@@ -579,7 +623,10 @@ export default function ReportsTab({ invoices, patients, purchases, supplies, mo
   };
 
   // فلتر المستخدم: يقصر التقارير على ما أصدره/سجّله/قبضه مستخدم واحد (الفارغ = كل المستخدمين)
-  const [userId, setUserId] = useState('');
+  const userId = prefs.userId;
+  const setUserId = (value) => setPrefs({ userId: value });
+  // الفلاتر تختلف عن الافتراضي (قد تكون محفوظة من آخر استخدام): نُظهر ذلك ونتيح العودة بضغطة
+  const customizedFilters = preset !== 'today' || Boolean(userId);
   const reportUsers = useMemo(() => collectReportUsers({ invoices, purchases, patients }), [invoices, purchases, patients]);
   const userOpt = reportUsers.find((u) => u.id === userId) ?? null;
 
@@ -640,6 +687,12 @@ export default function ReportsTab({ invoices, patients, purchases, supplies, mo
           {canCash && (
             <button type="button" onClick={() => setCashOpen(true)} style={outlineGoldButtonStyle}>
               <Wallet size={14} color={COLORS.gold} /> معاينة الكشف النقدي
+            </button>
+          )}
+
+          {customizedFilters && (
+            <button type="button" onClick={() => setPrefs({ preset: 'today', from: '', to: '', userId: '' })} style={outlineGoldButtonStyle} title="الفلاتر الحالية محفوظة من آخر استخدام">
+              <RotateCcw size={14} color={COLORS.gold} /> العودة لتقارير اليوم
             </button>
           )}
 

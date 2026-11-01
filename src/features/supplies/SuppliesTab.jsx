@@ -66,7 +66,7 @@ function SupplyModal({ item, onSave, onClose }) {
   };
 
   return (
-    <Modal title={item ? 'تعديل المستلزم الطبي' : 'إضافة مستلزم طبي جديد'} icon={Package} maxWidth={480} onClose={onClose}>
+    <Modal warnUnsaved title={item ? 'تعديل المستلزم الطبي' : 'إضافة مستلزم طبي جديد'} icon={Package} maxWidth={480} onClose={onClose}>
       <form onSubmit={handleSubmit}>
         <Field label="اسم المستلزم الطبي / الصنف" required>
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="warm-input" placeholder="مثال: بطاريات سماعات حجم 312..." required autoFocus />

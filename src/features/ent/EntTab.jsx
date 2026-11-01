@@ -1,4 +1,6 @@
 import { usePatientInsurance } from '../../hooks/usePatientInsurance';
+import { useDraft } from '../../hooks/useDraft';
+import DraftBanner from '../../components/common/DraftBanner';
 import InsuranceSelector, { insuranceDetails } from '../../components/common/InsuranceSelector';
 import { useState } from 'react';
 import AppointmentQueue from '../schedule/AppointmentQueue';
@@ -16,7 +18,7 @@ import { handleEnterAsTab } from '../../utils/form';
 import { withOffer } from '../offers/offerUtils';
 import DiagnosisInput from '../../components/common/DiagnosisInput';
 
-export default function EntTab({ patient, patients, offers = [], services, supplies, medications = [], onSaveMedicationUsage, insuranceCompanies, onSelectPatient, onAddVisit, appointments, onPickAppointment, onImportMedications }) {
+export default function EntTab({ patient, patients, offers = [], services, supplies, medications = [], onSaveMedicationUsage, insuranceCompanies, onSelectPatient, onAddVisit, appointments, onPickAppointment, onImportMedications, draftUser }) {
   const [summary, setSummary] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
   const [insurance, setInsurance, resetInsurance] = usePatientInsurance(patient);
@@ -24,6 +26,25 @@ export default function EntTab({ patient, patients, offers = [], services, suppl
   const [charges, setCharges] = useState(EMPTY_CHARGES);
   const [discount, setDiscount] = useState('');
   const [importOpen, setImportOpen] = useState(false);
+
+  // مسودة تلقائية للزيارة (تُستدعى بعد usePatientInsurance كي يُطبَّق التأمين المسترجع أخيراً)
+  const draft = useDraft({
+    userKey: draftUser,
+    scope: 'ent',
+    patient,
+    patients,
+    onSelectPatient,
+    values: { summary, diagnosis, meds, charges, discount, insurance },
+    hasContent: Boolean(summary.trim() || diagnosis.trim() || meds.length || hasCharges(charges) || discount),
+    onRestore: (v) => {
+      setSummary(v.summary ?? '');
+      setDiagnosis(v.diagnosis ?? '');
+      setMeds(v.meds ?? []);
+      setCharges(v.charges ?? EMPTY_CHARGES);
+      setDiscount(v.discount ?? '');
+      if (v.insurance) setInsurance(v.insurance);
+    },
+  });
 
   const entServices = services.filter((s) => s.dept === DEPARTMENTS.ENT);
   const subtotal = Math.max(0, Math.round((chargesTotal(charges) - withOffer(chargesItems(charges), charges.offerId, offers, services).discount) * 100) / 100);
@@ -57,6 +78,7 @@ export default function EntTab({ patient, patients, offers = [], services, suppl
     setCharges(EMPTY_CHARGES);
     setDiscount('');
     resetInsurance();
+    draft.clear(); // الزيارة حُفظت: لا حاجة للمسودة
   };
 
   return (
@@ -64,6 +86,8 @@ export default function EntTab({ patient, patients, offers = [], services, suppl
       <SectionHeader title="عيادة الأنف والأذن والحنجرة (ENT)" icon={Stethoscope} />
       <AppointmentQueue appointments={appointments} department={DEPARTMENTS.ENT} currentPatient={patient} onPick={onPickAppointment} />
       <PatientSearch patients={patients} patient={patient} onSelect={onSelectPatient} />
+
+      <DraftBanner draft={draft} />
 
       <form onSubmit={handleSubmit}>
         <Field label="التشخيص" optional large collapsible>

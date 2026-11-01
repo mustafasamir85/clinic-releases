@@ -19,7 +19,7 @@ function ServiceModal({ item, onSave, onClose }) {
   };
 
   return (
-    <Modal title={item ? 'تعديل الخدمة الطبية' : 'إضافة خدمة طبية جديدة'} icon={Briefcase} maxWidth={460} onClose={onClose}>
+    <Modal warnUnsaved title={item ? 'تعديل الخدمة الطبية' : 'إضافة خدمة طبية جديدة'} icon={Briefcase} maxWidth={460} onClose={onClose}>
       <form onSubmit={handleSubmit}>
         <Field label="اسم الخدمة أو الإجراء الطبي" required>
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="warm-input" placeholder="مثال: كشفية عيادة الأنف والأذن..." required autoFocus />

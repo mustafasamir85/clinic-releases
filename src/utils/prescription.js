@@ -17,3 +17,17 @@ export const parsePrescription = (text) =>
     });
 
 export const isDefaultUsage = (usage) => !usage || usage === DEFAULT_USAGE;
+
+// نص الوصفة بلا المادة الفعالة: "اسم الدواء — طريقة الاستخدام ، ..."
+// يُستعمل عند الحفظ وعند عرض الوصفات المحفوظة سابقاً وفيها "(المادة الفعالة)".
+// الأجزاء القديمة بصيغة "اسم (استخدام)" تُترك كما هي كي لا يُحذف الاستخدام.
+export const stripIngredients = (text) =>
+  String(text ?? '')
+    .split(' ، ')
+    .map((part) => {
+      const split = part.lastIndexOf(' — ');
+      if (split < 0) return part;
+      const head = part.slice(0, split).replace(/\s*\([^()]*\)\s*$/, '');
+      return `${head}${part.slice(split)}`;
+    })
+    .join(' ، ');

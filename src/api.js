@@ -4,19 +4,22 @@ import { API_BASE_URL } from './constants';
 const TOKEN_KEY = 'clinic-token';
 let tokenGeneration = 0;
 
+// "تذكرني": الرمز يُحفظ في localStorage فيبقى بعد إغلاق المتصفح، وبدونها في sessionStorage (يزول بإغلاق التبويب)
 export const getToken = () => {
   try {
-    return sessionStorage.getItem(TOKEN_KEY);
+    return sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
   } catch {
     return null;
   }
 };
 
-export const setToken = (token) => {
+export const setToken = (token, remember = false) => {
   tokenGeneration += 1;
   try {
-    if (token) sessionStorage.setItem(TOKEN_KEY, token);
-    else sessionStorage.removeItem(TOKEN_KEY);
+    // نمسح من المخزنين أولاً كي لا يبقى رمز قديم في أحدهما
+    sessionStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    if (token) (remember ? localStorage : sessionStorage).setItem(TOKEN_KEY, token);
   } catch {
     /* التخزين غير متاح */
   }
@@ -88,6 +91,8 @@ export const importMedications = (file) => {
   return request('/data/medications/import', { method: 'POST', body: form });
 };
 export const getCollection = (name) => request(`/data/${name}`);
+// إصدار كل مجموعة { versions: { patients: 'ab12..', ... } } — طلب صغير يُستعمل بدل جلب القوائم كاملة
+export const getVersions = () => request('/data/_versions');
 export const syncCollection = (name, upsert, remove) =>
   request(`/data/${name}/sync`, { method: 'PUT', body: { upsert, delete: remove } });
 
@@ -105,3 +110,21 @@ export const startBackupConnect = () => request('/backup/connect', { method: 'PO
 export const pollBackupConnect = () => request('/backup/connect/poll', { method: 'POST' });
 export const disconnectBackup = () => request('/backup/disconnect', { method: 'POST' });
 export const runBackupNow = () => request('/backup/run', { method: 'POST' });
+
+// ===== رسائل مدير النظام لجميع المستخدمين =====
+// الرسائل النشطة التي لم يطّلع عليها المستخدم الحالي بعد: { items: [{ id, title, message, level, created_by, created_at, expires_at }] }
+export const getActiveAnnouncements = () => request('/announcements/active');
+export const ackAnnouncement = (id) => request(`/announcements/${id}/ack`, { method: 'POST' });
+// المدير فقط: السجل مع عدد من اطّلع { items: [{ ..., revoked_at, read_count, recipient_count }] }
+export const getAnnouncements = () => request('/announcements');
+export const createAnnouncement = (announcement) => request('/announcements', { method: 'POST', body: announcement });
+export const revokeAnnouncement = (id) => request(`/announcements/${id}`, { method: 'DELETE' });
+// صورة الرسالة كـ Blob (تُحمَّل بطلب مصادَق لا بوسم <img> مباشرة لأن الرمز يُرسل في رأس Authorization)
+export const getAnnouncementImage = async (id) => {
+  try {
+    const res = await http.get(`/announcements/${id}/image`, { responseType: 'blob' });
+    return res.data;
+  } catch (error) {
+    throw toApiError(error);
+  }
+};

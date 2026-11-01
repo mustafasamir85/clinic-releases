@@ -62,7 +62,8 @@ export function CompareBars({ title, items }) {
 }
 
 export function HorizontalBars({ title, rows, valueKey = 'value', labelKey = 'key', formatValue, limit = 8 }) {
-  const list = rows.filter((row) => hasValue(row[valueKey])).slice(0, limit);
+  const all = rows.filter((row) => hasValue(row[valueKey]));
+  const list = all.slice(0, limit);
   const max = Math.max(0, ...list.map((row) => num(row[valueKey])));
   if (max <= 0) return null;
   return (
@@ -82,6 +83,7 @@ export function HorizontalBars({ title, rows, valueKey = 'value', labelKey = 'ke
           );
         })}
       </ul>
+      {all.length > limit && <p className="chart-note">يُعرض أعلى {limit} من {all.length}؛ التفاصيل الكاملة في الجدول أدناه.</p>}
     </ChartCard>
   );
 }

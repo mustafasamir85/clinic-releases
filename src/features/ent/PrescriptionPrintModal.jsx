@@ -18,7 +18,7 @@ export default function PrescriptionPrintModal({ patient, visit, onClose }) {
 
   return (
     <Modal title="الوصفة الطبية" icon={Pill} subtitle={`${patient.name} — زيارة ${formatDateDMY(visit.date)}`} maxWidth={680} onClose={onClose}>
-      <div style={paper}>
+      <div className="rx-paper" style={paper}>
         <PrintHeader />
 
         <h2 style={{ textAlign: 'center', margin: '0 0 14px 0', fontSize: '22px', textDecoration: 'underline' }}>وصفة طبية</h2>
@@ -29,14 +29,9 @@ export default function PrescriptionPrintModal({ patient, visit, onClose }) {
           <span>رقم الملف: {getFileNumber(patient)}</span>
           <span>التاريخ: {formatDateDMY(visit.date)}</span>
         </div>
-        {visit.diagnosis && (
-          <div style={{ fontSize: '13.5px', marginBottom: '12px' }}>
-            التشخيص: <strong>{visit.diagnosis}</strong>
-          </div>
-        )}
 
         {/* جسم الوصفة بالنسق الدولي: ℞ وقائمة الأدوية محاذاة لليسار (الترويسة وبيانات المريض تبقى من اليمين) */}
-        <div dir="ltr" style={{ textAlign: 'left' }}>
+        <div className="rx-body" dir="ltr" style={{ textAlign: 'left' }}>
           <div style={{ fontSize: '34px', fontWeight: '800', fontFamily: 'serif', margin: '10px 0' }}>℞</div>
 
           <ol style={{ margin: 0, paddingLeft: '26px', paddingRight: 0 }}>
@@ -51,7 +46,7 @@ export default function PrescriptionPrintModal({ patient, visit, onClose }) {
           </ol>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '36px', fontSize: '14px' }}>
+        <div className="rx-signature" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '36px', fontSize: '14px' }}>
           <div style={{ textAlign: 'center' }}>
             <div>الطبيب المعالج</div>
             <div style={{ fontWeight: '700', marginTop: '24px', minHeight: '20px' }}>{visit.doctor ?? ''}</div>
@@ -61,8 +56,8 @@ export default function PrescriptionPrintModal({ patient, visit, onClose }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-        <button type="button" onClick={() => printReport({ orientation: 'portrait' })} className="btn-warm-primary" style={{ padding: '8px 20px' }}>
+      <div className="rx-print-actions" style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+        <button type="button" onClick={() => printReport({ orientation: 'portrait', bodyClass: 'print-rx' })} className="btn-warm-primary" style={{ padding: '8px 20px' }}>
           <Printer size={16} /> طباعة الوصفة
         </button>
       </div>

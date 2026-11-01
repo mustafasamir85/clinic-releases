@@ -46,7 +46,7 @@ function OfferModal({ item, services, onSave, onClose }) {
   };
 
   return (
-    <Modal title={item ? 'تعديل العرض' : 'إضافة عرض جديد'} icon={Tag} maxWidth={560} onClose={onClose}>
+    <Modal warnUnsaved title={item ? 'تعديل العرض' : 'إضافة عرض جديد'} icon={Tag} maxWidth={560} onClose={onClose}>
       <form onSubmit={handleSubmit}>
         <Field label="اسم العرض" required>
           <input type="text" className="warm-input" value={form.name} onChange={setField('name')} placeholder="مثال: خصم الصيف على جلسات التخاطب" required autoFocus />

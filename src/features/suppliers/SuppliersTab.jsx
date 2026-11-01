@@ -20,7 +20,7 @@ function SupplierModal({ item, onSave, onClose }) {
   };
 
   return (
-    <Modal title={item ? 'تعديل بيانات المورّد' : 'إضافة مورّد جديد'} icon={Truck} maxWidth={480} onClose={onClose}>
+    <Modal warnUnsaved title={item ? 'تعديل بيانات المورّد' : 'إضافة مورّد جديد'} icon={Truck} maxWidth={480} onClose={onClose}>
       <form onSubmit={handleSubmit}>
         <Field label="اسم المورّد / الشركة" required>
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="warm-input" placeholder="مثال: شركة الأفق للمستلزمات الطبية" required autoFocus />
@@ -31,7 +31,7 @@ function SupplierModal({ item, onSave, onClose }) {
             <input type="text" value={contact} onChange={(e) => setContact(e.target.value)} className="warm-input" placeholder="اسم مندوب المبيعات" />
           </Field>
           <Field label="رقم الهاتف" required>
-            <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className="warm-input" placeholder="07xxxxxxxx" required dir="ltr" style={{ textAlign: 'right' }} />
+            <input type="text" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="warm-input" placeholder="07xxxxxxxx" required dir="ltr" style={{ textAlign: 'right' }} />
           </Field>
         </div>
 

@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Loader2, Plus, Search } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { TabSkeleton } from '../../components/common/Skeleton';
+import { Plus, Search } from 'lucide-react';
 import Autocomplete from '../../components/common/Autocomplete';
 import { COLORS } from '../../styles';
 import { calculateAge, getFileNumber } from '../../utils/format';
@@ -22,10 +23,12 @@ export default function PatientsTab({
   loading,
   patients,
   selectedPatient,
+  searchPick = 0,
   selectedVisit,
   onSelectPatient,
   onSelectVisit,
   onNewPatient,
+  onEditPatient,
   onEditVisit,
   onDeleteVisit,
   documents,
@@ -35,6 +38,16 @@ export default function PatientsTab({
 }) {
   const [query, setQuery] = useState('');
   const [openedId, setOpenedId] = useState(null); // المريض الذي اختير من البحث في هذه الشاشة
+
+  // اختيار مريض من البحث الشامل (Ctrl+K): نفتح ملفه ونعرض اسمه في خانة البحث.
+  // يعمل أيضاً عند الوصول من شاشة أخرى (تُركَّب الشاشة والعدّاد > 0 والمريض محدد).
+  useEffect(() => {
+    if (searchPick > 0 && selectedPatient) {
+      setOpenedId(selectedPatient.id);
+      setQuery(selectedPatient.name);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchPick]);
 
   const handleSelect = (patient) => {
     onSelectPatient(patient);
@@ -48,14 +61,7 @@ export default function PatientsTab({
     setOpenedId(null);
   };
 
-  if (loading) {
-    return (
-      <div style={{ textAlign: 'center', padding: '40px', color: COLORS.gold }}>
-        <Loader2 className="animate-spin" size={32} style={{ margin: '0 auto 12px auto' }} />
-        <p style={{ fontWeight: '700', fontSize: '14px', color: COLORS.ink }}>جاري تحميل سجلات المرضى...</p>
-      </div>
-    );
-  }
+  if (loading) return <TabSkeleton label="جاري تحميل سجلات المرضى..." />;
 
   return (
     <div style={{ maxWidth: '1500px', margin: '0 auto' }}>
@@ -98,6 +104,7 @@ export default function PatientsTab({
           patient={selectedPatient}
           selectedVisit={selectedVisit}
           onSelectVisit={onSelectVisit}
+          onEditPatient={onEditPatient}
           onEditVisit={onEditVisit}
           onDeleteVisit={onDeleteVisit}
           documents={documents}

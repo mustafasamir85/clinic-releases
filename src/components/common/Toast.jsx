@@ -1,34 +1,47 @@
-import { Check } from 'lucide-react';
-import { COLORS } from '../../styles';
+import { AlertCircle, AlertTriangle, Check, Info, X } from 'lucide-react';
 
-export default function Toast({ message }) {
-  if (!message) return null;
+const VARIANTS = {
+  success: { icon: Check, live: 'polite', role: 'status' },
+  info: { icon: Info, live: 'polite', role: 'status' },
+  warning: { icon: AlertTriangle, live: 'assertive', role: 'alert' },
+  error: { icon: AlertCircle, live: 'assertive', role: 'alert' },
+};
+
+// إشعار أسفل الشاشة بأربعة أنواع (نجاح/معلومة/تحذير/خطأ) وزر إغلاق وزر إجراء اختياري (مثل «تراجع»).
+// يتوقف العدّاد عند مرور الفأرة أو التركيز عليه. الألوان من متغيّرات الثيم في App.css (.app-toast-*).
+export default function Toast({ toast, onDismiss, onPause, onResume }) {
+  if (!toast) return null;
+  const v = VARIANTS[toast.type] ?? VARIANTS.success;
+  const Icon = v.icon;
+
   return (
     <div
-      role="status"
-      style={{
-        position: 'fixed',
-        top: '20px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        backgroundColor: COLORS.primary,
-        color: COLORS.onPrimary,
-        padding: '14px 28px',
-        borderRadius: '16px',
-        boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
-        border: `1px solid ${COLORS.gold}`,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '12px',
-        zIndex: 1000,
-        fontWeight: '700',
-        fontSize: '15px',
-      }}
+      key={toast.id}
+      className={`app-toast app-toast-${toast.type}`}
+      role={v.role}
+      aria-live={v.live}
+      onMouseEnter={onPause}
+      onMouseLeave={onResume}
+      onFocus={onPause}
+      onBlur={onResume}
     >
-      <div style={{ background: COLORS.gold, borderRadius: '50%', padding: '4px', display: 'flex' }}>
-        <Check size={16} color="var(--c-primary)" strokeWidth={3} />
-      </div>
-      <span>{message}</span>
+      <span className="app-toast-icon"><Icon size={16} strokeWidth={3} /></span>
+      <span className="app-toast-text">{toast.text}</span>
+      {toast.action && (
+        <button
+          type="button"
+          className="app-toast-action"
+          onClick={() => {
+            toast.action.onClick?.();
+            onDismiss();
+          }}
+        >
+          {toast.action.label}
+        </button>
+      )}
+      <button type="button" className="app-toast-close" aria-label="إغلاق الإشعار" onClick={onDismiss}>
+        <X size={16} />
+      </button>
     </div>
   );
 }

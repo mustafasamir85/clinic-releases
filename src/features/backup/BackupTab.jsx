@@ -5,6 +5,7 @@ import { COLORS, outlineGoldButtonStyle } from '../../styles';
 import { CollapsibleSection, Panel, SectionHeader, TabCard } from '../../components/common/layout';
 import StatusBadge from '../../components/common/StatusBadge';
 import Field from '../../components/common/Field';
+import { useConfirm } from '../../components/common/ConfirmDialog';
 
 const box = { background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: '14px', padding: '16px', marginBottom: '16px' };
 const cell = { padding: '8px 12px', textAlign: 'right', borderBottom: `1px solid ${COLORS.border}`, fontSize: '13px' };
@@ -12,6 +13,7 @@ const formatSize = (bytes) => (bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1
 
 // شاشة المدير: ربط Google Drive، وقت النسخ اليومي، عدد النسخ المحفوظة، نسخ فوري وسجل العمليات
 export default function BackupTab({ onNotify }) {
+  const confirm = useConfirm();
   const [status, setStatus] = useState(null);
   const [form, setForm] = useState({ enabled: false, time: '02:00', keep: 30 });
   const [busy, setBusy] = useState(''); // '' | connect | save | run | disconnect
@@ -55,7 +57,7 @@ export default function BackupTab({ onNotify }) {
   }, [pending, load, onNotify]);
 
   const run = async (kind, fn, doneText, confirmText) => {
-    if (confirmText && !window.confirm(confirmText)) return;
+    if (confirmText && !(await confirm({ title: 'تأكيد', message: confirmText, confirmLabel: 'متابعة' }))) return;
     setBusy(kind);
     setError('');
     try {

@@ -6,6 +6,7 @@ import { formatDateDMY, formatTime12, getToday } from '../../utils/format';
 import { Panel, ListRow, SectionHeader, TabCard } from '../../components/common/layout';
 import StatusBadge from '../../components/common/StatusBadge';
 import AppointmentModal from './AppointmentModal';
+import { useConfirm } from '../../components/common/ConfirmDialog';
 
 const TONE = { [ST.BOOKED]: 'warning', [ST.ARRIVED]: 'success', [ST.DONE]: 'neutral', [ST.CANCELLED]: 'danger' };
 
@@ -17,6 +18,7 @@ const shiftDate = (date, days) => {
 
 // جدول المواعيد: عرض يوم محدد، حجز موعد، وتغيير حالته. appointments = نتيجة useAppointments.
 export default function ScheduleTab({ appointments, patients, onNotify }) {
+  const confirm = useConfirm();
   const [from, setFrom] = useState(getToday());
   const [to, setTo] = useState(getToday());
   const [dept, setDept] = useState('');
@@ -72,8 +74,8 @@ export default function ScheduleTab({ appointments, patients, onNotify }) {
     return '';
   };
 
-  const handleDelete = (a) => {
-    if (!window.confirm(`حذف موعد ${a.patient_name}؟`)) return;
+  const handleDelete = async (a) => {
+    if (!(await confirm({ title: 'حذف الموعد', message: `حذف موعد ${a.patient_name}؟`, confirmLabel: 'حذف الموعد', danger: true }))) return;
     appointments.remove(a.id);
     onNotify('تم حذف الموعد.');
   };

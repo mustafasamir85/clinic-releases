@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 build
+release/electron/
 .env
 
 # Editor directories and files

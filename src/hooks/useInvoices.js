@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { newId } from '../utils/id';
 import { useSyncedState } from './useSyncedState';
 import { INITIAL_INVOICES } from '../data/initialData';
-import { INVOICE_STATUS } from '../constants';
+import { DEFAULT_PAYMENT_METHOD, INVOICE_STATUS } from '../constants';
 import { getToday } from '../utils/format';
 
 const nextInvoiceNumber = (invoices) => {
@@ -39,24 +39,27 @@ export const invoiceItems = (inv) =>
 export const itemsTotal = (items) => round2(items.reduce((t, i) => t + Number(i.qty) * Number(i.price), 0));
 const itemsService = (items) => items.map((i) => (i.qty > 1 ? `${i.description} ×${i.qty}` : i.description)).join(' + ');
 
-// يضيف للفاتورة دفعة بتاريخ اليوم (أساس الكشف النقدي اليومي). newPaid = إجمالي المدفوع بعد الدفعة.
-const withPayment = (inv, newPaid, by = '') => {
+// طريقة الدفع المسجَّلة لدفعة (القديمة بلا طريقة = نقدي)
+export const paymentMethodOf = (payment) => payment?.method || DEFAULT_PAYMENT_METHOD;
+
+// يضيف للفاتورة دفعة بتاريخ اليوم (أساس الكشف النقدي اليومي). newPaid = إجمالي المدفوع بعد الدفعة. method = نقدي أو بطاقة.
+const withPayment = (inv, newPaid, by = '', method = DEFAULT_PAYMENT_METHOD) => {
   const applied = round2(newPaid - (inv.paid ?? 0));
   return {
     ...inv,
     paid: newPaid,
     status: statusFor(newPaid, patientDue(inv)),
-    ...(applied > 0 ? { payments: [...(inv.payments ?? []), { date: getToday(), amount: applied, ...(by ? { by } : {}) }] } : {}),
+    ...(applied > 0 ? { payments: [...(inv.payments ?? []), { date: getToday(), amount: applied, method, ...(by ? { by } : {}) }] } : {}),
   };
 };
 
 export function useInvoices(enabled, currentUser = null) {
-  const [invoices, setInvoices] = useSyncedState('invoices', INITIAL_INVOICES, enabled);
+  const [invoices, setInvoices, { loading }] = useSyncedState('invoices', INITIAL_INVOICES, enabled);
   const payer = currentUser?.name || currentUser?.username || ''; // من يقبض الدفعة (يظهر في الكشف النقدي)
 
-  // paid فارغ = يدفع المريض كامل حصته. insurance = { name, copay } اختياري. source = مصدر الفاتورة (مثل 'supply_sale' لبيع المستلزمات) اختياري.
+  // paid فارغ = يدفع المريض كامل حصته. paymentMethod = طريقة دفع ما يُدفع الآن. insurance = { name, copay } اختياري. source = مصدر الفاتورة (مثل 'supply_sale' لبيع المستلزمات) اختياري.
   const createInvoice = useCallback(
-    ({ patientName, patientId = null, service, total, items, paid, insurance, source, stockLines }) => {
+    ({ patientName, patientId = null, service, total, items, paid, insurance, source, stockLines, paymentMethod = DEFAULT_PAYMENT_METHOD }) => {
       // عند وجود بنود يُحسب الإجمالي ووصف الخدمة منها
       const totalNum = items?.length ? itemsTotal(items) : Number(total);
       const { copay, amount: insuranceAmount } = insuranceShare(totalNum, insurance);
@@ -82,7 +85,7 @@ export function useInvoices(enabled, currentUser = null) {
         insurance_copay: copay,
         insurance_amount: insuranceAmount,
         paid: paidNum,
-        ...(paidNum > 0 ? { payments: [{ date: getToday(), amount: paidNum, ...(payer ? { by: payer } : {}) }] } : {}),
+        ...(paidNum > 0 ? { payments: [{ date: getToday(), amount: paidNum, method: paymentMethod, ...(payer ? { by: payer } : {}) }] } : {}),
         status: statusFor(paidNum, due),
         date: getToday(),
       };
@@ -92,21 +95,21 @@ export function useInvoices(enabled, currentUser = null) {
     [invoices, currentUser, payer]
   );
 
-  const confirmPayment = useCallback((id) => {
+  const confirmPayment = useCallback((id, method = DEFAULT_PAYMENT_METHOD) => {
     setInvoices((prev) =>
-      prev.map((inv) => (inv.id === id ? withPayment(inv, patientDue(inv), payer) : inv))
+      prev.map((inv) => (inv.id === id ? withPayment(inv, patientDue(inv), payer, method) : inv))
     );
   }, [payer]);
 
   const removeInvoice = useCallback((id) => setInvoices((prev) => prev.filter((i) => i.id !== id)), []);
 
   // تسجيل دفعة من المريض (لا تتجاوز المتبقي). تعيد المبلغ المسجَّل فعلاً.
-  const recordPayment = useCallback((id, amount) => {
+  const recordPayment = useCallback((id, amount, method = DEFAULT_PAYMENT_METHOD) => {
     setInvoices((prev) =>
       prev.map((inv) => {
         if (inv.id !== id) return inv;
         const due = patientDue(inv);
-        return withPayment(inv, round2(Math.min(due, inv.paid + Number(amount))), payer);
+        return withPayment(inv, round2(Math.min(due, inv.paid + Number(amount))), payer, method);
       })
     );
   }, [payer]);
@@ -123,6 +126,9 @@ export function useInvoices(enabled, currentUser = null) {
       const due = round2(total - (inv.insurance_amount ?? 0));
       const paid = round2(Math.min(inv.paid ?? 0, Math.max(0, due)));
       const refund = round2((inv.paid ?? 0) - paid);
+      // يُردّ المبلغ بنفس طريقة آخر دفعة قُبضت (بطاقة ← بطاقة)
+      const lastPaid = [...(inv.payments ?? [])].reverse().find((p) => Number(p.amount) > 0);
+      const refundMethod = paymentMethodOf(lastPaid);
       setInvoices((prev) =>
         prev.map((x) =>
           x.id !== id
@@ -136,7 +142,7 @@ export function useInvoices(enabled, currentUser = null) {
                 status: statusFor(paid, due),
                 stock_lines: stockLines,
                 returns: [...(x.returns ?? []), { ...entry, refund }],
-                ...(refund > 0 ? { payments: [...(x.payments ?? []), { date: getToday(), amount: -refund, ...(payer ? { by: payer } : {}) }] } : {}),
+                ...(refund > 0 ? { payments: [...(x.payments ?? []), { date: getToday(), amount: -refund, method: refundMethod, ...(payer ? { by: payer } : {}) }] } : {}),
               }
         )
       );
@@ -183,5 +189,5 @@ export function useInvoices(enabled, currentUser = null) {
     [invoices, updateInvoice]
   );
 
-  return { invoices, createInvoice, confirmPayment, recordPayment, applySaleReturn, updateInvoice, cancelInvoice, removeInvoice };
+  return { loading, invoices, createInvoice, confirmPayment, recordPayment, applySaleReturn, updateInvoice, cancelInvoice, removeInvoice };
 }

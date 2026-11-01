@@ -28,7 +28,7 @@ export default function StockCountModal({ items, onApply, onClose }) {
   };
 
   return (
-    <Modal title="جرد المخزون وتعديل الكميات" icon={ClipboardCheck} maxWidth={680} onClose={onClose}>
+    <Modal warnUnsaved title="جرد المخزون وتعديل الكميات" icon={ClipboardCheck} maxWidth={680} onClose={onClose}>
       <p style={{ margin: '0 0 14px 0', color: COLORS.muted, fontSize: '13px' }}>
         أدخل الكمية الفعلية الموجودة لكل صنف. الأصناف التي تختلف عن رصيد النظام فقط هي التي ستُعدَّل.
       </p>

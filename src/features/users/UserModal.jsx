@@ -18,6 +18,7 @@ export default function UserModal({ user, actor, isSelf, onSave, onClose, minPas
   const canGrant = (id) => actorIsAdmin || (actor?.permissions ?? []).includes(id);
   const [form, setForm] = useState({
     name: user?.name ?? '',
+    name_en: user?.name_en ?? '',
     username: user?.username ?? '',
     role: user?.role ?? 'doctor',
     password: '',
@@ -68,6 +69,7 @@ export default function UserModal({ user, actor, isSelf, onSave, onClose, minPas
     }
     const message = await onSave({
       name: form.name.trim(),
+      name_en: form.name_en.trim(),
       username: form.username.trim(),
       role: form.role,
       permissions: effective,
@@ -78,12 +80,18 @@ export default function UserModal({ user, actor, isSelf, onSave, onClose, minPas
   };
 
   return (
-    <Modal title={user ? 'تعديل المستخدم' : 'إضافة مستخدم جديد'} icon={UserPlus} maxWidth={640} onClose={onClose}>
+    <Modal warnUnsaved title={user ? 'تعديل المستخدم' : 'إضافة مستخدم جديد'} icon={UserPlus} maxWidth={640} onClose={onClose}>
       <form onSubmit={handleSubmit}>
         <div style={twoColumns}>
           <Field label="الاسم الكامل" required>
             <input type="text" className="warm-input" value={form.name} onChange={setField('name')} required autoFocus />
           </Field>
+          <Field label="الاسم الكامل بالإنجليزية (Full name in English)" required>
+            <input type="text" className="warm-input" value={form.name_en} onChange={setField('name_en')} required dir="ltr" style={{ textAlign: 'left' }} placeholder="e.g. Dr. Sara Al-Ahmad" />
+          </Field>
+        </div>
+
+        <div style={{ marginTop: '12px' }}>
           <Field label="اسم المستخدم (للدخول)" required>
             <input type="text" className="warm-input" value={form.username} onChange={setField('username')} autoComplete="off" required dir="ltr" style={{ textAlign: 'right' }} />
           </Field>

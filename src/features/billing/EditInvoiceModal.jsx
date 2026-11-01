@@ -40,7 +40,7 @@ export default function EditInvoiceModal({ invoice, offers, services, onSubmit, 
   };
 
   return (
-    <Modal title={`تعديل الفاتورة ${invoice.inv_no}`} subtitle={`الإسم: ${invoice.patient_name}`} icon={Edit2} maxWidth={720} onClose={onClose}>
+    <Modal warnUnsaved title={`تعديل الفاتورة ${invoice.inv_no}`} subtitle={`الإسم: ${invoice.patient_name}`} icon={Edit2} maxWidth={720} onClose={onClose}>
       <form onSubmit={handleSubmit}>
         <InvoiceItemsEditor items={items} onChange={setItems} suggestions={services.map((s) => s.name)} />
 

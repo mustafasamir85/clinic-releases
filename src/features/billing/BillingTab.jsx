@@ -6,13 +6,26 @@ import { invoiceCopay, patientDue } from '../../hooks/useInvoices';
 import { formatDateDMY, formatMoney, getToday, formatUser } from '../../utils/format';
 import { Panel, ListRow, SectionHeader, TabCard } from '../../components/common/layout';
 import StatusBadge from '../../components/common/StatusBadge';
+import ShowMore from '../../components/common/ShowMore';
+import { usePersistedState } from '../../hooks/usePersistedState';
+import { useShowMore } from '../../hooks/useShowMore';
+import { INVOICE_SORTS, isInvoiceSort, sortInvoices } from './invoiceSort';
 
-export default function BillingTab({ invoices, onRecordPayment, onEdit, onDelete, onPreview }) {
+const PAGE_SIZE = 50;
+const DATE = /^(\d{4}-\d{2}-\d{2})?$/;
+const validateFilter = (key, value) =>
+  key === 'sort' ? isInvoiceSort(value) : key === 'status' ? value === '' || Object.values(INVOICE_STATUS).includes(value) : key === 'from' || key === 'to' ? DATE.test(value) : true;
+
+// prefsUser: اسم المستخدم لحفظ آخر فلاتر استخدمها (الحالة، التأمين، الفترة، الفرز). نص البحث لا يُحفظ.
+export default function BillingTab({ invoices, onRecordPayment, onEdit, onDelete, onPreview, prefsUser }) {
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('');
-  const [from, setFrom] = useState(getToday);
-  const [to, setTo] = useState(getToday);
-  const [insurance, setInsurance] = useState('');
+  const defaults = useMemo(() => ({ status: '', insurance: '', from: getToday(), to: getToday(), sort: 'default' }), []);
+  const [filters, setFilters] = usePersistedState(prefsUser ? `${prefsUser}:billing` : null, defaults, validateFilter);
+  const { status, insurance, from, to, sort } = filters;
+  const setStatus = (value) => setFilters({ status: value });
+  const setInsurance = (value) => setFilters({ insurance: value });
+  const setFrom = (value) => setFilters({ from: value });
+  const setTo = (value) => setFilters({ to: value });
 
   const insuranceCompanies = useMemo(
     () => [...new Set(invoices.map((inv) => inv.insurance_company).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ar')),
@@ -37,11 +50,14 @@ export default function BillingTab({ invoices, onRecordPayment, onEdit, onDelete
 
   const resetFilters = () => {
     setSearch('');
-    setStatus('');
-    setFrom(getToday());
-    setTo(getToday());
-    setInsurance('');
+    setFilters(); // الافتراضي: اليوم، كل الحالات، الأحدث أولاً (ويُمسح المحفوظ)
   };
+
+  // فلاتر تختلف عن الافتراضي (قد تكون مستعادة من آخر استخدام): نُنبّه كي لا يظن المستخدم أن القائمة ناقصة
+  const customized = Boolean(status || insurance || sort !== 'default' || from !== defaults.from || to !== defaults.to);
+
+  const sorted = useMemo(() => sortInvoices(filtered, sort), [filtered, sort]);
+  const pager = useShowMore(sorted.length, PAGE_SIZE, JSON.stringify([search, filters]));
 
   return (
     <TabCard>
@@ -86,11 +102,19 @@ export default function BillingTab({ invoices, onRecordPayment, onEdit, onDelete
           <span>إلى</span>
           <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} className="warm-input" aria-label="إلى تاريخ" />
         </label>
+        <select value={sort} onChange={(e) => setFilters({ sort: e.target.value })} className="warm-select" aria-label="ترتيب الفواتير">
+          {INVOICE_SORTS.map((o) => (
+            <option key={o.id} value={o.id}>ترتيب: {o.label}</option>
+          ))}
+        </select>
         <button type="button" onClick={resetFilters} className="billing-reset-filters" title="مسح الفلاتر">
           <RotateCcw size={14} /> مسح الفلاتر
         </button>
       </div>
-      <div className="billing-results-count">عدد الفواتير: {filtered.length} من {invoices.length}</div>
+      <div className="billing-results-count">
+        عدد الفواتير: {filtered.length} من {invoices.length}
+        {customized && <> • <span style={{ color: COLORS.warnText }}>فلاتر مطبَّقة (محفوظة من آخر استخدام) — اضغط «مسح الفلاتر» للعودة لفواتير اليوم</span></>}
+      </div>
       </Panel>
 
       <Panel title={`قائمة الفواتير (${filtered.length})`}>
@@ -98,7 +122,7 @@ export default function BillingTab({ invoices, onRecordPayment, onEdit, onDelete
         {filtered.length === 0 && (
           <p style={{ textAlign: 'center', color: COLORS.faint, padding: '20px' }}>لا توجد فواتير مطابقة.</p>
         )}
-        {filtered.map((inv) => {
+        {sorted.slice(0, pager.visible).map((inv) => {
           const isPaid = inv.status === INVOICE_STATUS.PAID;
           return (
             <ListRow
@@ -156,6 +180,7 @@ export default function BillingTab({ invoices, onRecordPayment, onEdit, onDelete
           );
         })}
       </div>
+      <ShowMore pager={pager} total={sorted.length} pageSize={PAGE_SIZE} noun="فاتورة" />
       </Panel>
     </TabCard>
   );

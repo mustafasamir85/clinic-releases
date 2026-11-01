@@ -1,19 +1,25 @@
 import { ltr } from './phone';
-import { CLINIC_ADDRESS, CLINIC_EMAIL, CLINIC_PHONES } from '../constants';
+import { CLINIC_ADDRESS, CLINIC_ADDRESS_ENGLISH, CLINIC_EMAIL, CLINIC_PHONES } from '../constants';
 import { formatDateDMY, getToday } from './format';
 import { getPrintUser } from './printUser';
 
 // "طُبع بواسطة: المستخدم • التاريخ والوقت" — يُحسب لحظة الطباعة. فارغ إن لم يكن هناك مستخدم.
-export function printedByLine(now = new Date()) {
+export function printedByLine(now = new Date(), lang = 'ar') {
   const user = getPrintUser();
   if (!user) return '';
   const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  return `طُبع بواسطة: ${user} • ${formatDateDMY(getToday())} ${time}`;
+  return lang === 'en' ? `Printed by: ${user} • ${formatDateDMY(getToday())} ${time}` : `طُبع بواسطة: ${user} • ${formatDateDMY(getToday())} ${time}`;
 }
 
 // أجزاء التذييل: center = العنوان والهاتف/البريد (وسط الصفحة)، by = "طُبع بواسطة" (أسفل اليسار بخط صغير).
-export function footerParts() {
+// lang = 'en' للوثائق الإنجليزية (تذييل بالإنجليزية).
+export function footerParts(lang = 'ar') {
   const phones = CLINIC_PHONES.filter(Boolean);
+  if (lang === 'en') {
+    const contact = [phones.length > 0 && `Tel: ${phones.join(' / ')}`, CLINIC_EMAIL && `Email: ${CLINIC_EMAIL}`].filter(Boolean).join('  •  ');
+    const address = CLINIC_ADDRESS_ENGLISH || CLINIC_ADDRESS;
+    return { center: [address && `Address: ${address}`, contact].filter(Boolean), by: printedByLine(new Date(), 'en') };
+  }
   const contact = [phones.length > 0 && `هاتف: ${phones.map(ltr).join(' / ')}`, CLINIC_EMAIL && `البريد الإلكتروني: ${ltr(CLINIC_EMAIL)}`].filter(Boolean).join('  •  ');
   return { center: [CLINIC_ADDRESS && `العنوان: ${CLINIC_ADDRESS}`, contact].filter(Boolean), by: printedByLine() };
 }
@@ -117,9 +123,9 @@ export function fitToOnePage(orientation, availableMm) {
   return scale;
 }
 
-export function printReport({ section, title, orientation = 'landscape', bodyClass, fit = true } = {}) {
+export function printReport({ section, title, orientation = 'landscape', bodyClass, fit = true, lang = 'ar' } = {}) {
   const page = document.createElement('style');
-  const parts = footerParts();
+  const parts = footerParts(lang);
   const marginBoxes = supportsPageMargins();
   page.textContent = pageCss(orientation, parts, marginBoxes);
   // متصفح بلا دعم لهوامش @page: يُملأ تذييل داخل المستند ويُطبع مرة في آخره

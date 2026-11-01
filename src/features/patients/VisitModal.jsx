@@ -25,7 +25,7 @@ export default function VisitModal({ patient, insuranceCompanies, onSubmit, onCl
   };
 
   return (
-    <Modal
+    <Modal warnUnsaved
       title="إضافة زيارة جديدة"
       subtitle={<>المريض: <strong style={{ color: COLORS.gold }}>{patient.name}</strong> ({getFileNumber(patient)})</>}
       maxWidth={580}

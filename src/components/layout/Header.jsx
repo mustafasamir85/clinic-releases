@@ -1,23 +1,52 @@
-import { LogOut, Moon, ShieldCheck, Sun } from 'lucide-react';
+import { Home, LogOut, Menu, Moon, Search, ShieldCheck, Sun } from 'lucide-react';
 import { roleLabel } from '../../auth/permissions';
-import { CLINIC_NAME, CLINIC_SUBTITLE } from '../../constants';
+import { CLINIC_NAME, CLINIC_NAME_ENGLISH, CLINIC_SUBTITLE } from '../../constants';
 import { COLORS } from '../../styles';
 import clinicLogo from '../../assets/logo.jpeg';
+import { ltr } from '../../utils/phone';
+import ThemeColors from './ThemeColors';
+import SyncIndicator from '../common/SyncIndicator';
 
-export default function Header({ theme, onToggleTheme, user, onLogout }) {
+const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent);
+
+export default function Header({ theme, onToggleTheme, themeCtl, user, onLogout, onOpenSearch, onGoHome, onOpenNav, navOpen, display, onDisplayChange }) {
   const isDark = theme === 'dark';
 
   return (
     <header className="warm-header">
       <div className="warm-header-brand">
+        {onOpenNav && (
+          <button type="button" className="btn-icon-theme nav-menu-btn" onClick={onOpenNav} aria-label="فتح القائمة" aria-expanded={Boolean(navOpen)} aria-controls="app-nav">
+            <Menu size={20} />
+          </button>
+        )}
         <img className="warm-header-logo" src={clinicLogo} alt={`شعار ${CLINIC_NAME}`} />
         <div className="warm-header-title">
           <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '700' }}>{CLINIC_NAME}</h1>
-          <span style={{ fontSize: '12px', color: COLORS.muted }}>{CLINIC_SUBTITLE}</span>
+          <p lang="en" style={{ margin: 0, fontSize: '18px', fontWeight: '700', direction: 'ltr', textAlign: 'center', display: 'block' }}>{CLINIC_NAME_ENGLISH}</p>
+          <span style={{ fontSize: '14px', color: COLORS.muted , direction: 'ltr', textAlign: 'center', display:'block'}}>{CLINIC_SUBTITLE}</span>
         </div>
       </div>
 
       <div className="warm-header-actions">
+        <SyncIndicator />
+
+        {onGoHome && (
+          <button type="button" className="btn-icon-theme" onClick={onGoHome} aria-label="الصفحة الرئيسية" title="الصفحة الرئيسية">
+            <Home size={18} />
+          </button>
+        )}
+
+        {onOpenSearch && (
+          <button type="button" className="header-search-btn" onClick={onOpenSearch} aria-label="بحث شامل" title={`بحث شامل (${IS_MAC ? '⌘K' : 'Ctrl+K'})`}>
+            <Search size={17} />
+            <span className="header-search-label">بحث</span>
+            <kbd className="header-search-kbd">{IS_MAC ? '⌘K' : 'Ctrl K'}</kbd>
+          </button>
+        )}
+
+        {themeCtl && <ThemeColors ctl={themeCtl} display={display} onDisplayChange={onDisplayChange} />}
+
         <button
           type="button"
           className="btn-icon-theme"

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Search } from 'lucide-react';
-import { COLORS } from '../../styles';
+import { History, Search } from 'lucide-react';
+import { COLORS, outlineGoldButtonStyle } from '../../styles';
+import PatientHistoryModal from './PatientHistoryModal';
 import { calculateAge, getFileNumber } from '../../utils/format';
 import { Panel } from './layout';
 import Autocomplete from './Autocomplete';
@@ -20,6 +21,7 @@ const renderPatient = (p) => (
 // بحث عن المريض واختياره من داخل شاشة القسم، مع إظهار المريض الحالي
 export default function PatientSearch({ patients, patient, onSelect }) {
   const [query, setQuery] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
 
   return (
     <Panel title="البحث عن المريض (بالاسم أو الهاتف أو رقم الملف)" icon={Search} style={{ marginBottom: '20px' }}>
@@ -37,12 +39,21 @@ export default function PatientSearch({ patients, patient, onSelect }) {
         placeholder="ابدأ بكتابة اسم المريض..."
       />
 
-      <p style={{ color: COLORS.muted, fontSize: '13px', margin: '10px 0 0 0' }}>
-        المريض الحالي:{' '}
-        <span style={{ fontWeight: '700', color: COLORS.gold }}>
-          {patient ? `${patient.name} (${getFileNumber(patient)})` : 'لم يتم اختيار مريض'}
-        </span>
-      </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '10px' }}>
+        <p style={{ color: COLORS.muted, fontSize: '13px', margin: 0 }}>
+          المريض الحالي:{' '}
+          <span style={{ fontWeight: '700', color: COLORS.gold }}>
+            {patient ? `${patient.name} (${getFileNumber(patient)})` : 'لم يتم اختيار مريض'}
+          </span>
+        </p>
+        {patient && (
+          <button type="button" onClick={() => setShowHistory(true)} style={outlineGoldButtonStyle}>
+            <History size={16} color={COLORS.gold} /> التاريخ المرضي
+          </button>
+        )}
+      </div>
+
+      {showHistory && patient && <PatientHistoryModal patient={patient} onClose={() => setShowHistory(false)} />}
     </Panel>
   );
 }

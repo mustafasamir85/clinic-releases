@@ -1,16 +1,18 @@
 import InsuranceSelector from '../../components/common/InsuranceSelector';
 import { insuranceFromPatient } from '../../hooks/usePatientInsurance';
-import { Clock, Hash, Eye, Ear, FileText, Printer, Trash2, CalendarOff } from 'lucide-react';
+import { Clock, Hash, Eye, Ear, FileText, Printer, Trash2, CalendarOff, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import { audiogramSummary } from '../audio/Audiogram';
 import PrescriptionPrintModal from '../ent/PrescriptionPrintModal';
 import DocumentModal from '../documents/DocumentModal';
 import DocumentPreviewModal from '../documents/DocumentPreviewModal';
-import { DOC_TYPES } from '../documents/documentUtils';
+import { docLabel } from '../documents/documentUtils';
 import AudiogramPreviewModal from '../audio/AudiogramPreviewModal';
 import { CollapsibleSection, Panel, EditDeleteActions } from '../../components/common/layout';
 import { COLORS, outlineGoldButtonStyle, smallOutlineButtonStyle } from '../../styles';
+import { stripIngredients } from '../../utils/prescription';
 import { calculateAge, formatDateDMY, formatMoney, formatUser, getFileNumber } from '../../utils/format';
+import { useConfirm } from '../../components/common/ConfirmDialog';
 
 const InfoItem = ({ label, value, color, span }) => (
   <div style={span ? { gridColumn: `span ${span}` } : undefined}>
@@ -23,7 +25,7 @@ function VisitDetails({ visit, onEdit, onDelete, onPreviewAudiogram, onPrintPres
   const fields = [
     { label: 'التشخيص', value: visit.diagnosis, color: COLORS.ink, bold: true },
     { label: 'الملخص والتشخيص', value: visit.summary, color: COLORS.ink, bold: false },
-    { label: 'الوصفة الطبية والعلاج', value: visit.prescription, color: COLORS.gold, bold: true },
+    { label: 'الوصفة الطبية والعلاج', value: stripIngredients(visit.prescription), color: COLORS.gold, bold: true },
     { label: 'الإجراءات الطبية المنفّذة', value: visit.procedures, color: COLORS.ink, bold: true },
     { label: 'المستلزمات المستخدمة', value: visit.supplies_used, color: COLORS.ink, bold: false },
     {
@@ -96,7 +98,8 @@ function VisitDetails({ visit, onEdit, onDelete, onPreviewAudiogram, onPrintPres
   );
 }
 
-export default function PatientProfile({ patient, insuranceCompanies, selectedVisit, onSelectVisit, onEditVisit, onDeleteVisit, documents, onUpdateHistory, onUpdateInsurance }) {
+export default function PatientProfile({ patient, insuranceCompanies, selectedVisit, onSelectVisit, onEditVisit, onDeleteVisit, documents, onUpdateHistory, onUpdateInsurance, onEditPatient }) {
+  const confirm = useConfirm();
   const visits = patient.visits ?? [];
   const audiogramVisits = visits.filter((v) => v.audiogram);
   const [rxVisitId, setRxVisitId] = useState(null); // زيارة تُطبع وصفتها
@@ -128,6 +131,11 @@ export default function PatientProfile({ patient, insuranceCompanies, selectedVi
         </div>
 
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {onEditPatient && (
+            <button type="button" onClick={() => onEditPatient(patient)} style={outlineGoldButtonStyle}>
+              <Pencil size={16} color={COLORS.gold} /> تعديل البيانات
+            </button>
+          )}
           {documents?.onIssue && (
             <>
               <button onClick={() => setDocForm('report')} style={outlineGoldButtonStyle}>
@@ -238,7 +246,7 @@ export default function PatientProfile({ patient, insuranceCompanies, selectedVi
             {[...patientDocs].reverse().map((d) => (
               <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: '12px', padding: '10px 14px' }}>
                 <div>
-                  <strong style={{ fontSize: '13px', color: COLORS.ink }}>{DOC_TYPES[d.type].label} • {d.no}</strong>
+                  <strong style={{ fontSize: '13px', color: COLORS.ink }}>{docLabel(d)} • {d.no}</strong>
                   <span style={{ display: 'block', fontSize: '12px', color: COLORS.muted, marginTop: '2px' }}>
                     📅 {formatDateDMY(d.date)}
                     {d.type === 'leave' ? ` • ${d.days} يوم (${formatDateDMY(d.from)} – ${formatDateDMY(d.to)})` : ''}
@@ -253,7 +261,9 @@ export default function PatientProfile({ patient, insuranceCompanies, selectedVi
                     <button
                       type="button"
                       aria-label="حذف الوثيقة"
-                      onClick={() => window.confirm('حذف هذه الوثيقة من الملف؟') && documents.onDelete(patient.id, d.id)}
+                      onClick={async () => {
+                        if (await confirm({ title: 'حذف الوثيقة', message: 'حذف هذه الوثيقة من الملف؟', confirmLabel: 'حذف الوثيقة', danger: true })) documents.onDelete(patient.id, d.id);
+                      }}
                       style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: COLORS.danger }}
                     >
                       <Trash2 size={16} />
@@ -267,7 +277,7 @@ export default function PatientProfile({ patient, insuranceCompanies, selectedVi
       )}
 
       {docForm && documents?.onIssue && (
-        <DocumentModal type={docForm} patient={patient} visit={selectedVisit} onSubmit={handleIssue} onClose={() => setDocForm(null)} />
+        <DocumentModal type={docForm} patient={patient} visit={selectedVisit} doctorNameEn={documents.issuerNameEn} onSubmit={handleIssue} onClose={() => setDocForm(null)} />
       )}
       {rxVisitId && visits.find((v) => v.id === rxVisitId) && (
         <PrescriptionPrintModal patient={patient} visit={visits.find((v) => v.id === rxVisitId)} onClose={() => setRxVisitId(null)} />

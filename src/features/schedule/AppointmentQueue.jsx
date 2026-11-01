@@ -16,7 +16,7 @@ export default function AppointmentQueue({ appointments, department, currentPati
     currentPatient && (a.patient_id ? a.patient_id === currentPatient.id : a.patient_name === currentPatient.name);
 
   return (
-    <Panel title={`المرضى المحجوزون اليوم في هذه العيادة (${queue.length})`} icon={CalendarClock} style={{ marginBottom: '20px' }}>
+    <Panel title={`حجوزات المرضى في هذه العيادة (${queue.length})`} icon={CalendarClock} style={{ marginBottom: '20px' }}>
 
       {queue.length === 0 ? (
         <p style={{ margin: 0, color: COLORS.faint, fontSize: '13px' }}>لا توجد حجوزات فعّالة لهذا اليوم.</p>

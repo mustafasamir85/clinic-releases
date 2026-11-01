@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Eye, Plus, Search, Store, Trash2, Undo2, X } from 'lucide-react';
-import { INVOICE_STATUS, LOW_STOCK_THRESHOLD } from '../../constants';
+import { DEFAULT_PAYMENT_METHOD, INVOICE_STATUS, LOW_STOCK_THRESHOLD } from '../../constants';
 import { COLORS, smallOutlineButtonStyle } from '../../styles';
 import { formatDateDMY, formatMoney, getFileNumber } from '../../utils/format';
 import { handleEnterAsTab } from '../../utils/form';
@@ -8,15 +8,19 @@ import { Panel, ListRow, SectionHeader, TabCard } from '../../components/common/
 import Field from '../../components/common/Field';
 import Autocomplete from '../../components/common/Autocomplete';
 import PatientSearch from '../../components/common/PatientSearch';
+import PaymentMethodSelect from '../../components/common/PaymentMethodSelect';
 import StatusBadge from '../../components/common/StatusBadge';
 import { inRange } from '../reports/reportData';
 import SaleReturnModal from './SaleReturnModal';
 import { canReturn, returnState } from './saleReturn';
+import ShowMore from '../../components/common/ShowMore';
+import { useShowMore } from '../../hooks/useShowMore';
+import { INVOICE_SORTS, sortInvoices } from '../billing/invoiceSort';
 
 export const SALE_SOURCE = 'supply_sale'; // قيمة invoice.source لفواتير بيع المستلزمات
 
 const round2 = (n) => Math.round(n * 100) / 100;
-const HISTORY_LIMIT = 50;
+const PAGE_SIZE = 50; // عدد المبيعات في كل صفحة من القائمة (يزيد بزر «عرض المزيد»)
 
 const getSupplyText = (s) => s.name;
 const renderSupply = (s) => (
@@ -38,6 +42,7 @@ export default function SalesTab({ patients, supplies, invoices, canConfirmPayme
   const [lines, setLines] = useState([]); // [{ id, name, unit, price, qty }]
   const [discount, setDiscount] = useState('');
   const [paidNow, setPaidNow] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState(DEFAULT_PAYMENT_METHOD);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [returningId, setReturningId] = useState(null);
@@ -47,6 +52,7 @@ export default function SalesTab({ patients, supplies, invoices, canConfirmPayme
   const [returnFilter, setReturnFilter] = useState('all'); // all | none | partial | full
   const [userFilter, setUserFilter] = useState('all');
   const [customerFilter, setCustomerFilter] = useState('all'); // all | registered | walkin
+  const [sort, setSort] = useState('default');
 
   const stockOf = (id) => supplies.find((s) => s.id === id)?.stock ?? 0;
   const sellable = useMemo(() => supplies.filter((s) => s.stock > 0), [supplies]);
@@ -78,6 +84,7 @@ export default function SalesTab({ patients, supplies, invoices, canConfirmPayme
     setLines([]);
     setDiscount('');
     setPaidNow(true);
+    setPaymentMethod(DEFAULT_PAYMENT_METHOD);
     setError('');
   };
 
@@ -91,7 +98,7 @@ export default function SalesTab({ patients, supplies, invoices, canConfirmPayme
     const items = lines.map((l) => ({ description: l.name, qty: l.qty, price: l.price }));
     if (discountValue > 0) items.push({ id: 'discount-manual', description: 'خصم', qty: 1, price: -discountValue });
 
-    onSell({ patient: customer, customerName, lines, items, paidNow: willPay });
+    onSell({ patient: customer, customerName, lines, items, paidNow: willPay, paymentMethod });
     return reset();
   };
 
@@ -108,6 +115,9 @@ export default function SalesTab({ patients, supplies, invoices, canConfirmPayme
       .filter((i) => userFilter === 'all' || i.created_by === userFilter)
       .filter((i) => customerFilter === 'all' || (customerFilter === 'registered' ? i.patient_id != null : i.patient_id == null));
   }, [allSales, search, fromDate, toDate, payFilter, returnFilter, userFilter, customerFilter, supplies]);
+
+  const sortedSales = useMemo(() => sortInvoices(sales, sort), [sales, sort]);
+  const pager = useShowMore(sortedSales.length, PAGE_SIZE, JSON.stringify([search, fromDate, toDate, payFilter, returnFilter, userFilter, customerFilter, sort]));
 
   const filtersActive = Boolean(fromDate || toDate || payFilter !== 'all' || returnFilter !== 'all' || userFilter !== 'all' || customerFilter !== 'all' || search.trim());
   const clearFilters = () => {
@@ -181,6 +191,8 @@ export default function SalesTab({ patients, supplies, invoices, canConfirmPayme
           </label>
         </div>
 
+        {willPay && lines.length > 0 && <PaymentMethodSelect value={paymentMethod} onChange={setPaymentMethod} style={{ maxWidth: '360px', marginBottom: '14px' }} />}
+
         {lines.length > 0 && (
           <div style={{ background: COLORS.soft, border: `1px solid ${COLORS.border}`, borderRadius: '12px', padding: '12px 16px', margin: '6px 0 14px', fontSize: '13px', color: COLORS.ink }}>
             المجموع: {formatMoney(subtotal)}
@@ -249,6 +261,11 @@ export default function SalesTab({ patients, supplies, invoices, canConfirmPayme
               </select>
             </Field>
           )}
+          <Field label="الترتيب" style={{ flex: '1 1 150px' }}>
+            <select className="warm-select" style={{ margin: 0 }} value={sort} onChange={(e) => setSort(e.target.value)}>
+              {INVOICE_SORTS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+            </select>
+          </Field>
           {filtersActive && (
             <button type="button" onClick={clearFilters} style={{ ...smallOutlineButtonStyle, marginBottom: '2px' }}>
               <X size={13} color={COLORS.gold} /> مسح الفلاتر
@@ -265,7 +282,7 @@ export default function SalesTab({ patients, supplies, invoices, canConfirmPayme
           <p style={{ textAlign: 'center', color: COLORS.faint, padding: '20px' }}>{filtersActive ? 'لا توجد مبيعات تطابق الفلاتر.' : 'لا توجد مبيعات مسجلة.'}</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {sales.slice(0, HISTORY_LIMIT).map((inv) => (
+            {sortedSales.slice(0, pager.visible).map((inv) => (
               <ListRow
                 key={inv.id}
                 leading={<span style={{ fontWeight: '800', color: COLORS.gold, fontSize: '14px', background: COLORS.soft, padding: '8px 12px', borderRadius: '10px', border: `1px solid ${COLORS.border}` }}>{inv.inv_no}</span>}
@@ -287,11 +304,7 @@ export default function SalesTab({ patients, supplies, invoices, canConfirmPayme
                 </button>
               </ListRow>
             ))}
-            {sales.length > HISTORY_LIMIT && (
-              <p style={{ textAlign: 'center', color: COLORS.muted, fontSize: '12px' }}>
-                يُعرض آخر {HISTORY_LIMIT} عملية بيع؛ استخدم البحث أو الفلاتر لإيجاد غيرها، أو افتح قسم الفواتير.
-              </p>
-            )}
+            <ShowMore pager={pager} total={sortedSales.length} pageSize={PAGE_SIZE} noun="عملية بيع" />
           </div>
         )}
       </Panel>

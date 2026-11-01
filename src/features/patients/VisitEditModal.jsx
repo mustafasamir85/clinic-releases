@@ -9,6 +9,7 @@ import ChargesPicker, { EMPTY_CHARGES } from '../../components/common/ChargesPic
 import { AudiogramEditor, EMPTY_AUDIOGRAM, hasAudiogram } from '../audio/Audiogram';
 import { COLORS, twoColumns } from '../../styles';
 import { getFileNumber } from '../../utils/format';
+import { stripIngredients } from '../../utils/prescription';
 import DiagnosisInput from '../../components/common/DiagnosisInput';
 
 // شركة التأمين تُحفظ في الزيارة بالاسم، فنبحث عنها بالاسم لإعادة بناء الاختيار
@@ -25,7 +26,7 @@ const showField = (visit, key, dept) => visit.department === dept || Boolean(vis
 export default function VisitEditModal({ patient, visit, offers = [], services, supplies, insuranceCompanies, onSubmit, onClose }) {
   // الإجراءات قابلة للتعديل إن كانت محفوظة بشكل منظّم، أو إن لم يكن للزيارة فاتورة (لإضافتها لأول مرة).
   // الزيارات القديمة (نصوص بلا تفاصيل منظّمة) وزيارة بيع السماعة لا نمسّها.
-  const chargesEditable = Boolean(visit.charges) || (!visit.invoice_id && !visit.procedures && !visit.supplies_used);
+  const chargesEditable = !visit.charges_locked && (Boolean(visit.charges) || (!visit.invoice_id && !visit.procedures && !visit.supplies_used));
   const [charges, setCharges] = useState(visit.charges ?? EMPTY_CHARGES);
 
   // الكمية المتاحة للتعديل = المخزون الحالي + ما خُصم لهذه الزيارة أصلاً
@@ -37,7 +38,7 @@ export default function VisitEditModal({ patient, visit, offers = [], services, 
     date: visit.date ?? '',
     diagnosis: visit.diagnosis ?? '',
     summary: visit.summary ?? '',
-    prescription: visit.prescription ?? '',
+    prescription: stripIngredients(visit.prescription),
     advice: visit.advice ?? '',
     hearing_aid: visit.hearing_aid ?? '',
     progress: visit.progress ?? '',
@@ -63,7 +64,7 @@ export default function VisitEditModal({ patient, visit, offers = [], services, 
   };
 
   return (
-    <Modal
+    <Modal warnUnsaved
       title="تعديل تفاصيل الزيارة"
       subtitle={<>المريض: <strong style={{ color: COLORS.gold }}>{patient.name}</strong> ({getFileNumber(patient)}) • القسم: {visit.department}</>}
       maxWidth={620}

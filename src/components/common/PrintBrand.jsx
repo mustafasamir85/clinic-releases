@@ -1,14 +1,17 @@
-import { CLINIC_NAME, CLINIC_SUBTITLE } from '../../constants';
+import { CLINIC_NAME, CLINIC_NAME_ENGLISH, CLINIC_SUBTITLE } from '../../constants';
 import clinicLogo from '../../assets/logo.jpeg';
 
 // ترويسة الطباعة الموحّدة: الشعار في المنتصف وتحته اسم المؤسسة. children = سطور عنوان المستند (اختيارية).
 // bare = بلا حدّ سفلي (حين تكون الحاوية نفسها فيها حدّ).
-export function PrintHeader({ children, bare = false }) {
+// lang = 'en' يعرض الاسم الإنجليزي للمؤسسة (للوثائق الإنجليزية).
+export function PrintHeader({ children, bare = false, lang = 'ar' }) {
+  const english = lang === 'en';
   return (
     <div className={`print-brand${bare ? ' print-brand--bare' : ''}`}>
-      <img className="print-clinic-logo" src={clinicLogo} alt={`شعار ${CLINIC_NAME}`} />
+      <img className="print-clinic-logo" src={clinicLogo} alt={english ? `${CLINIC_NAME_ENGLISH} logo` : `شعار ${CLINIC_NAME}`} />
       <div className="print-brand-name">{CLINIC_NAME}</div>
-      {CLINIC_SUBTITLE && <div className="print-brand-sub">{CLINIC_SUBTITLE}</div>}
+      <div className="print-brand-name">{CLINIC_NAME_ENGLISH}</div>
+      {{CLINIC_SUBTITLE} && <div className="print-brand-sub">{CLINIC_SUBTITLE}</div>}
       {children && <div className="print-brand-extra">{children}</div>}
     </div>
   );
